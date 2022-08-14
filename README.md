@@ -8,3 +8,7 @@ A full-sized drag & drop JavaScript event calendar
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 - [License](LICENSE.txt)
+
+<!-- https://fullcalendar.io/docs/event-object -->
+
+<!-- calendar.getEventById(id).remove() -->

@@ -6,7 +6,7 @@
 <script src='lib/main.js'></script>
 <script src='lib/locales/zh-cn.js'></script>
 <script src="lib/axios.min.js"></script>
-<script src="lib/atlas-api.js"></script>
+<script src="lib/gas-api.js"></script>
 <script>
   let eventsData = [
     {
@@ -68,7 +68,7 @@
               start: event.start,
               end: event.end
             };
-            atlasAddEvent(newEvent);
+            gasAddEvent(newEvent);
             calendar.addEvent(newEvent);
             calendar.unselect();
           } else {
@@ -100,15 +100,9 @@
   });
 
   async function loadEvents() {
-    let result = await atlasGetEvents().then(function (response) {
-        let rawData = response.data.documents;
-        let data = [];
-        for (let i = 0; i < rawData.length; i++) {
-          let entry = rawData[i];
-          delete entry["_id"];
-          data.push(entry);
-        }
-        return data;
+    let result = await gasGetEvents().then(function (response) {
+        let rawData = response.data;
+        return rawData;
     })
     .catch(function (error) {
         console.log(error);

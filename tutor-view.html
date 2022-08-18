@@ -5,6 +5,10 @@
 <link href='lib/main.css' rel='stylesheet' />
 <script src='lib/main.js'></script>
 <script src="lib/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/faunadb@latest/dist/faunadb.js"></script>
+<script src="lib/fauna-api.js"></script>
+
+
 <script>
   let eventsData = [
     {
@@ -38,8 +42,26 @@
       events: eventsData
     });
 
-    calendar.render();
+    faunaGetEvents()
+    .then(events => {
+      let clsEvents = []
+      for (let i = 0; i < events.length; i++) {
+        let event = events[i].data;
+        event['dbId'] = events[i].ref.value.id;
+        clsEvents.push(event);
+      }
+      calendar.setOption('events', clsEvents);
+      calendar.render();
+      setupPanel();
+    });
   });
+
+
+  function redirectVisitor(){
+    let path = location.pathname;
+    let prefix = path.substring(0,path.lastIndexOf('/'));
+    window.location.href= prefix + '/index.html';
+  }
 
 </script>
 <style>
@@ -61,6 +83,8 @@
 <body>
 
   <div id='calendar'></div>
+  <button onclick='redirectVisitor()' style="border-color: #2C3E50; background-color:#2C3E50; color:#f5f5f5;">返回选课界面</button>
+  
 
 </body>
 </html>

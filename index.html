@@ -6,8 +6,15 @@
 <script src='lib/main.js'></script>
 <script src='lib/locales/zh-cn.js'></script>
 <script src="lib/axios.min.js"></script>
-<script src="lib/gas-api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/faunadb@latest/dist/faunadb.js"></script>
+<script src="lib/fauna-api.js"></script>
 <script>
+  
+  // faunaAddEvent({
+  //     title: 'Meeting',
+  //     start: '2022-09-16T14:30:00'
+  // });
+
   let eventsData = [
     {
       title: '全天',
@@ -62,15 +69,18 @@
                                      `\n${message}        是否确认？`);
           }
           if (confirmBooking) {
+            let start = event.start;
+            let end = event.end;
             var newEvent = {
               id: id,
               title: message,
-              start: event.start,
-              end: event.end
+              start: start.toISOString(),
+              end: end.toISOString()
             };
-            gasAddEvent(newEvent);
-            calendar.addEvent(newEvent);
-            calendar.unselect();
+            faunaAddEvent(newEvent).then(res => {
+              calendar.addEvent(newEvent);
+              calendar.unselect();
+            })
           } else {
             calendar.unselect();
           }
@@ -89,25 +99,37 @@
     for(let i = 0; i < unavailableTimeSlots.length; i++) {
       setUnavailableTimeSlots(calendar, unavailableTimeSlots[i][0], unavailableTimeSlots[i][1]);
     }
-    loadEvents().then(events => {
-      calendar.setOption('events', events);
+
+    faunaGetEvents()
+    .then(events => {
+      let clsEvents = []
+      for (let i = 0; i < events.length; i++) {
+        let event = events[i].data;
+        event['dbId'] = events[i].ref.value.id;
+        clsEvents.push(event);
+      }
+      calendar.setOption('events', clsEvents);
       calendar.render();
-      var adminButton = document.getElementsByClassName('fc-timeGridWeek-button fc-button fc-button-primary fc-button-active')[0]; 
-      adminButton.innerHTML = "管理界面";
-      adminButton.setAttribute("onclick", "redirectAdmin();");
-      // document.getElementById("loader").setAttribute("style", "display:none");
-    });
+      setupPanel();
+    })
   });
 
-  async function loadEvents() {
-    let result = await gasGetEvents().then(function (response) {
-        let rawData = response.data;
-        return rawData;
-    })
-    .catch(function (error) {
-        console.log(error);
-    });
-    return result;
+  function setupPanel() {
+    var adminBtn = document.getElementsByClassName('fc-timeGridWeek-button fc-button fc-button-primary fc-button-active')[0]; 
+    var prevButton = document.getElementsByClassName('fc-prev-button fc-button fc-button-primary')[0];
+    var nextButton = document.getElementsByClassName('fc-next-button fc-button fc-button-primary')[0];  
+    var todayButton = document.getElementsByClassName('fc-today-button fc-button fc-button-primary')[0];  
+    prevButton.setAttribute("onclick", "refreshAdminBtn();");
+    nextButton.setAttribute("onclick", "refreshAdminBtn();");
+    todayButton.setAttribute("onclick", "refreshAdminBtn();");
+    adminBtn.setAttribute("onclick", "redirectAdmin();");
+    // document.getElementById("loader").setAttribute("style", "display:none");
+    refreshAdminBtn();
+  }
+
+  function refreshAdminBtn() {
+    var adminBtn = document.getElementsByClassName('fc-timeGridWeek-button fc-button fc-button-primary fc-button-active')[0]; 
+    adminBtn.innerHTML = "管理界面";
   }
 
   function redirectAdmin(){
@@ -140,7 +162,12 @@
   function isValid(str){
     return !/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g.test(str);
   }
+
 </script>
+
+
+
+
 <style>
   body {
     margin: 40px 10px;
@@ -171,7 +198,7 @@
 <body>
   <div id='calendar'>
     <!-- loader -->
-    <div class="loader loader--style1" style="margin-left:40%" id="loader" title="0">
+    <div class="loader loader--style1" style="margin-left:40%;margin-top: 30%;" id="loader" title="0">
       <svg version="1.1" id="loader-1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
       width="80px" height="80px" viewBox="0 0 40 40" enable-background="new 0 0 40 40" xml:space="preserve">
       <path opacity="0.2" fill="#000" d="M20.201,5.169c-8.254,0-14.946,6.692-14.946,14.946c0,8.255,6.692,14.946,14.946,14.946

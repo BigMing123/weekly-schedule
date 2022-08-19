@@ -3,29 +3,22 @@
 <head>
 <meta charset='utf-8' />
 <link href='lib/main.css' rel='stylesheet' />
+<link href='lib/tutor-view.css' rel='stylesheet' />
 <script src='lib/main.js'></script>
+<script src='lib/locales/zh-cn.js'></script>
 <script src="lib/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/faunadb@latest/dist/faunadb.js"></script>
 <script src="lib/fauna-api.js"></script>
 
 
 <script>
-  let eventsData = [
-    {
-      title: '全天',
-      start: '2022-09-01',
-    },
-    {
-      title: 'Meeting',
-      start: '2022-08-14T10:30:00',
-      end: '2022-08-14T12:30:00'
-    },
-    {
-      title: 'Meeting',
-      start: '2022-08-16T14:30:00'
-    }
+  let eventsData = [];
+  let slotMinMax = [8,23];
+  let unavailableTimeSlots = [
+    [13, 14], 
+    [22, 23]
   ];
-
+  let hiddenDays = [];
   document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
 
@@ -35,13 +28,32 @@
         center: 'title',
         right: 'dayGridMonth,dayGridWeek,dayGridDay'
       },
+      locale: zhCn,
       initialDate: new Date(),
       navLinks: true, // can click day/week names to navigate views
       editable: true,
       dayMaxEvents: true, // allow "more" link when too many events
-      events: eventsData
+      events: eventsData,
+      eventClick: function(info) {
+        let dbId = info.event.extendedProps.dbId;
+        let start = info.event._instance.range.start;
+        let end = info.event._instance.range.end;
+        let title = info.event.title;
+        confirmDeleting = confirm(`删除： ${start.toLocaleString("zh-cn")}` + 
+                                  ` - ${end.toLocaleString("zh-cn")}` +
+                                  `\n${title}        是否删除该项目？`);
+        if (confirmDeleting) {
+          faunaDeleteEvent(dbId)
+          .then(res => {
+            loadPanel(calendar);
+          });
+        }
+      }
     });
+    prepareLoginForm(calendar);
+  });
 
+  function loadPanel(calendar) {
     faunaGetEvents()
     .then(events => {
       let clsEvents = []
@@ -51,16 +63,73 @@
         clsEvents.push(event);
       }
       calendar.setOption('events', clsEvents);
+      let calendarEl = document.getElementById('calendar');
+      calendarEl.setAttribute("style","display:block");
       calendar.render();
-      setupPanel();
+      let loader = document.getElementById("loader");
+      loader.setAttribute("style","display:none");
     });
-  });
+  }
 
+  function adminPanel() {
+    let calendarEl = document.getElementById("calendar");
+    calendarEl.setAttribute("style","display:none");
+    let linkNode = document.getElementsByTagName('link')[1];
+    linkNode.disabled = false;
+    let adminPanel = document.getElementById("admin-panel");
+    adminPanel.setAttribute("style", "display:block");
+  }
 
-  function redirectVisitor(){
+  function redirectVisitor() {
     let path = location.pathname;
     let prefix = path.substring(0,path.lastIndexOf('/'));
     window.location.href= prefix + '/index.html';
+  }
+
+  function prepareLoginForm(calendar) {
+    const form = document.getElementById('login-form');
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      let username = event.srcElement[0].value;
+      let password = event.srcElement[1].value;
+      login(username, password, calendar);
+    });
+  }
+
+  function login(username, password, calendar) {
+    let loginPanel = document.getElementById("login-panel");
+    let loader = document.getElementById("loader");
+    let calendarEl = document.getElementById("calendar");
+    loginPanel.setAttribute("style","display:none");
+    loader.setAttribute("style","display:block");
+    faunaFindItemByValue('user', 'username', username)
+    .then((res) => {
+      if (Object.keys(res).length != 0) {
+        let pw = res.data.password;
+        if (password == pw) {
+          let linkNode = document.getElementsByTagName('link')[1];
+          linkNode.disabled = true;
+          loadPanel(calendar);
+        } else {
+          alert("登陆失败，用户名密码不正确")
+          loginPanel.setAttribute("style","display:block");
+          loader.setAttribute("style","display:none");
+        }
+      } else {
+        alert("登陆失败，用户名密码不正确");
+        loginPanel.setAttribute("style","display:block");
+        loader.setAttribute("style","display:none");
+      }
+    });
+  }
+
+  function returnBack() {
+    let adminPanel = document.getElementById("admin-panel");
+    adminPanel.setAttribute("style", "display:none");
+    let linkNode = document.getElementsByTagName('link')[1];
+    linkNode.disabled = true;
+    let calendarEl = document.getElementById("calendar");
+    calendarEl.setAttribute("style","display:block");
   }
 
 </script>
@@ -78,13 +147,137 @@
     margin: 0 auto;
   }
 
+  #loader-1 {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+  }
+
+  .fc-button.fc-button-primary.fc-button-active {
+    width:100%;
+  }
+
+  table.fc-scrollgrid-sync-table {
+    height: 75vh !important;
+  }
+
+  .fc-view-harness.fc-view-harness-active {
+    height: 80vh !important;
+  }
+
+  input[type='number'] {
+    color:black;
+    width:143px;
+    padding:15px;
+  } 
 </style>
 </head>
-<body>
 
-  <div id='calendar'></div>
-  <button onclick='redirectVisitor()' style="border-color: #2C3E50; background-color:#2C3E50; color:#f5f5f5;">返回选课界面</button>
-  
+<body class="align">
+  <div id='calendar' style="display:none">
+    <button onclick='adminPanel()' class="fc-button fc-button-primary fc-button-active">进入管理界面</button>
+  </div>
+
+  <div class="grid" id="login-panel">
+    <div id="login-panel-title">
+      欢迎使用在线约课管理系统
+    </div>
+    <form class="form login" id="login-form">
+      <div class="form__field">
+        <label for="login__username"><svg class="icon">
+            <use xlink:href="#icon-user"></use>
+          </svg><span class="hidden">用户名</span></label>
+        <input autocomplete="username" id="login__username" type="text" name="username" class="form__input" placeholder="用户名" required>
+      </div>
+
+      <div class="form__field">
+        <label for="login__password"><svg class="icon">
+            <use xlink:href="#icon-lock"></use>
+          </svg><span class="hidden">密码</span></label>
+        <input id="login__password" type="password" name="password" class="form__input" placeholder="密码" required>
+      </div>
+
+      <div class="form__field">
+        <input type="submit" id="login-btn" value="登陆">
+      </div>
+    </form>
+    <p class="text--center">还不是成员? <a href="#">点此注册</a> <svg class="icon">
+        <use xlink:href="#icon-arrow-right"></use>
+      </svg></p>
+  </div>
+
+  <div class="loader loader--style1" id="loader" style="display:none" title="0">
+    <svg version="1.1" id="loader-1" x="0px" y="0px"
+    width="80px" height="80px" viewBox="0 0 40 40" enable-background="new 0 0 40 40" xml:space="preserve">
+      <path opacity="0.2" fill="#000" d="M20.201,5.169c-8.254,0-14.946,6.692-14.946,14.946c0,8.255,6.692,14.946,14.946,14.946
+        s14.946-6.691,14.946-14.946C35.146,11.861,28.455,5.169,20.201,5.169z M20.201,31.749c-6.425,0-11.634-5.208-11.634-11.634
+        c0-6.425,5.209-11.634,11.634-11.634c6.425,0,11.633,5.209,11.633,11.634C31.834,26.541,26.626,31.749,20.201,31.749z"/>
+      <path fill="#000" d="M26.013,10.047l1.654-2.866c-2.198-1.272-4.743-2.012-7.466-2.012h0v3.312h0
+        C22.32,8.481,24.301,9.057,26.013,10.047z">
+        <animateTransform attributeType="xml"
+          attributeName="transform"
+          type="rotate"
+          from="0 20 20"
+          to="360 20 20"
+          dur="0.5s"
+          repeatCount="indefinite"/>
+        </path>
+    </svg>
+  </div>
+
+  <svg class="icons" style="display:none">
+    <symbol id="icon-arrow-right" viewBox="0 0 1792 1792">
+      <path d="M1600 960q0 54-37 91l-651 651q-39 37-91 37-51 0-90-37l-75-75q-38-38-38-91t38-91l293-293H245q-52 0-84.5-37.5T128 1024V896q0-53 32.5-90.5T245 768h704L656 474q-38-36-38-90t38-90l75-75q38-38 90-38 53 0 91 38l651 651q37 35 37 90z" />
+    </symbol>
+    <symbol id="icon-lock" viewBox="0 0 1792 1792">
+      <path d="M640 768h512V576q0-106-75-181t-181-75-181 75-75 181v192zm832 96v576q0 40-28 68t-68 28H416q-40 0-68-28t-28-68V864q0-40 28-68t68-28h32V576q0-184 132-316t316-132 316 132 132 316v192h32q40 0 68 28t28 68z" />
+    </symbol>
+    <symbol id="icon-user" viewBox="0 0 1792 1792">
+      <path d="M1600 1405q0 120-73 189.5t-194 69.5H459q-121 0-194-69.5T192 1405q0-53 3.5-103.5t14-109T236 1084t43-97.5 62-81 85.5-53.5T538 832q9 0 42 21.5t74.5 48 108 48T896 971t133.5-21.5 108-48 74.5-48 42-21.5q61 0 111.5 20t85.5 53.5 62 81 43 97.5 26.5 108.5 14 109 3.5 103.5zm-320-893q0 159-112.5 271.5T896 896 624.5 783.5 512 512t112.5-271.5T896 128t271.5 112.5T1280 512z" />
+    </symbol>
+  </svg>
+
+  <div class="grid" id="admin-panel" style="display: none">
+    <div id="login-panel-title">
+      在线约课管理系统Admin
+    </div>
+    <form class="form login" id="login-form">
+      <div class="form__field">
+        <label for="slotMin"><span>起始工作时间(0-24点)</span></label>
+        <input id="slotMin" type="number" id="quantity" name="quantity1" min="0" max="24" value="8">
+      </div>
+
+      <div class="form__field">
+        <label for="slotMax"><span>结束工作时间(0-24点)</span></label>
+        <input id="slotMax" type="number" id="quantity" name="quantity2" min="0" max="24" value="23">
+      </div>
+
+      <div class="form__field">
+        <label for="unavailableTimeSlots"><span>全局不可选时间段(逗号隔开)</span></label>
+        <input id="unavailableTimeSlots" type="text" id="quantity3" name="quantity" value="13-14,22-23" placeholder="如1-2,3-4">
+      </div>
+
+      <div class="form__field">
+        <label for="hiddenDays"><span>不可选工作日(逗号隔开)</span></label>
+        <input id="hiddenDays" type="text" id="quantity3" name="quantity" value="" placeholder="例如:1,2">
+      </div>
+
+      <div>
+        <div class="form__field" style="float:right; width:45%;">
+          <input type="submit" id="save-btn" value="保存">
+        </div>
+        <div class="form__field" style="float:left; width:45%;">
+          <input class="return" id="exit-btn" onclick="returnBack()" value="返回">
+        </div>
+      </div>
+    </form>
+  </div>
 
 </body>
+
+
+
 </html>

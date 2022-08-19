@@ -9,28 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/faunadb@latest/dist/faunadb.js"></script>
 <script src="lib/fauna-api.js"></script>
 <script>
-  
-  // faunaAddEvent({
-  //     title: 'Meeting',
-  //     start: '2022-09-16T14:30:00'
-  // });
-
-  let eventsData = [
-    {
-      title: '全天',
-      start: '2022-09-01',
-    },
-    {
-      id: '1223353422818',
-      title: 'Meeting',
-      start: '2022-08-14T10:30:00',
-      end: '2022-08-14T12:30:00'
-    },
-    {
-      title: 'Meeting',
-      start: '2022-08-16T14:30:00'
-    }
-  ];
+  let eventsData = [];
   let slotMinMax = [8,23];
   let unavailableTimeSlots = [
     [13, 14], 
@@ -119,23 +98,29 @@
     var prevButton = document.getElementsByClassName('fc-prev-button fc-button fc-button-primary')[0];
     var nextButton = document.getElementsByClassName('fc-next-button fc-button fc-button-primary')[0];  
     var todayButton = document.getElementsByClassName('fc-today-button fc-button fc-button-primary')[0];  
+    // var loader = document.getElementById('loader');
+    // loader.setAttribute("style", "display:none");
     prevButton.setAttribute("onclick", "refreshAdminBtn();");
     nextButton.setAttribute("onclick", "refreshAdminBtn();");
     todayButton.setAttribute("onclick", "refreshAdminBtn();");
     adminBtn.setAttribute("onclick", "redirectAdmin();");
-    // document.getElementById("loader").setAttribute("style", "display:none");
+    adminBtn.setAttribute("onclick", "adminInfo();");
     refreshAdminBtn();
   }
 
   function refreshAdminBtn() {
-    var adminBtn = document.getElementsByClassName('fc-timeGridWeek-button fc-button fc-button-primary fc-button-active')[0]; 
-    adminBtn.innerHTML = "管理界面";
+    var adminBtn = document.getElementsByClassName('fc-timeGridWeek-button fc-button fc-button-primary fc-button-active')[0];
+    adminBtn.innerHTML = "使用指南";
   }
 
   function redirectAdmin(){
     let path = location.pathname;
     let prefix = path.substring(0,path.lastIndexOf('/'));
     window.location.href= prefix + '/tutor-view.html';
+  }
+
+  function adminInfo(){
+    alert("欢迎使用pte课程预定系统");
   }
 
   function setUnavailableTimeSlots(calendar, startHour, endHour) {
@@ -192,13 +177,25 @@
     vertical-align: top;
   }
 
+  #loader, #loader-1 {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+  }
 
+  #loader-1 {
+    transform:scale(1.3);
+  }
 </style>
 </head>
+
 <body>
   <div id='calendar'>
     <!-- loader -->
-    <div class="loader loader--style1" style="margin-left:40%;margin-top: 30%;" id="loader" title="0">
+    <div class="loader loader--style1" id="loader" title="0">
       <svg version="1.1" id="loader-1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
       width="80px" height="80px" viewBox="0 0 40 40" enable-background="new 0 0 40 40" xml:space="preserve">
       <path opacity="0.2" fill="#000" d="M20.201,5.169c-8.254,0-14.946,6.692-14.946,14.946c0,8.255,6.692,14.946,14.946,14.946

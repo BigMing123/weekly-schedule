@@ -176,17 +176,46 @@
   function submitBooking(studentName, phoneNum) {
     let start = startTime;
     let end = endTime;
-    let id = new Date().valueOf() + Math.round(Math.random() * 100);
-    var newEvent = {
-      id: id,
-      title: studentName,
-      contact: phoneNum,
-      start: start.toISOString(),
-      end: end.toISOString()
-    };
-    faunaAddEvent(newEvent).then(res => {
-      calendar.unselect();
-      returnBack();
+    avoidDoubleBook(start,end)
+    .then(res => {
+      if (res) {
+        let id = new Date().valueOf() + Math.round(Math.random() * 100);
+        var newEvent = {
+          id: id,
+          title: studentName,
+          contact: phoneNum,
+          start: start.toISOString(),
+          end: end.toISOString()
+        };
+        faunaAddEvent(newEvent).then(res => {
+          calendar.unselect();
+          returnBack();
+        })
+      } else {
+        alert("该时间段已被占用");
+        returnBack();
+      }
+    })
+  }
+
+  async function avoidDoubleBook(start, end) {
+    return new Promise(resolve => {
+      faunaGetEvents()
+      .then(events => {
+        let flag = true;
+        for (let i = 0; i < events.length; i++) {
+          let event = events[i].data;
+          let s = new Date(event.start);
+          let e = new Date(event.end);
+            if (start < e && start >= s) {
+              flag = false;
+            }
+            if (end <= e && end > s) {
+              flag = false;
+            }
+        }
+        return resolve(flag);
+      })
     })
   }
 

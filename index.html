@@ -3,24 +3,23 @@
 <head>
 <meta charset='utf-8' />
 <link href='lib/main.css' rel='stylesheet' />
+<link href='lib/tutor-view.css' rel='stylesheet' />
 <script src='lib/main.js'></script>
 <script src='lib/locales/zh-cn.js'></script>
 <script src="lib/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/faunadb@latest/dist/faunadb.js"></script>
 <script src="lib/fauna-api.js"></script>
 <script>
+  let linkNode = document.getElementsByTagName('link')[1];
+  linkNode.disabled = true;
   let eventsData = [];
-  let slotMinMax = [8,23];
-  let unavailableTimeSlots = [
-    [13, 14], 
-    [22, 23]
-  ];
   let hiddenDays = [];
-  
+  let calendar = null;
+  let startTime = null;
+  let endTime = null;
   document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
-
-    var calendar = new FullCalendar.Calendar(calendarEl, {
+    calendar = new FullCalendar.Calendar(calendarEl, {
       locale: zhCn,
       initialDate: '2020-09-12',
       initialView: 'timeGridWeek',
@@ -39,78 +38,67 @@
       select: function(event) {
         let start = event.start;
         let end = event.end;
-        let id = new Date().valueOf() + Math.round(Math.random() * 100);
-          let message = prompt('请输入学员名字'); 
-          let confirmBooking = null;
-          if (message && message.length < 100 && isValid(message)) {
-            confirmBooking = confirm(`预约时间： ${start.toLocaleString("zh-cn")}` + 
-                                     ` - ${end.toLocaleString("zh-cn")}` +
-                                     `\n${message}        是否确认？`);
-          }
-          if (confirmBooking) {
-            let start = event.start;
-            let end = event.end;
-            var newEvent = {
-              id: id,
-              title: message,
-              start: start.toISOString(),
-              end: end.toISOString()
-            };
-            faunaAddEvent(newEvent).then(res => {
-              calendar.addEvent(newEvent);
-              calendar.unselect();
-            })
-          } else {
-            calendar.unselect();
-          }
+        startTime = event.start;
+        endTime = event.end;
       },
       selectOverlap : false,
       validRange: {
           start: new Date(),
           end: new Date(new Date().setDate(new Date().getDate() + 30))
       },
-      hiddenDays: hiddenDays   //设置不可选的工作日，1,3 代表周一周三 0代表周日
+      hiddenDays: []   //设置不可选的工作日，1,3 代表周一周三 0代表周日
     });
-    //设置最早最晚时间
-    calendar.setOption('slotMinTime', `${slotMinMax[0]}:00:00`);
-    calendar.setOption('slotMaxTime', `${slotMinMax[1]}:00:00`);
-    // 设置不可选时间段
-    for(let i = 0; i < unavailableTimeSlots.length; i++) {
-      setUnavailableTimeSlots(calendar, unavailableTimeSlots[i][0], unavailableTimeSlots[i][1]);
-    }
+    loadPanel(0);
+    prepareSubmitForm();
+  });
 
+  function loadPanel(option) { //option 0 表示一开始加载网页，option 1 表示之后重新加载
     faunaGetEvents()
     .then(events => {
       let clsEvents = []
       for (let i = 0; i < events.length; i++) {
         let event = events[i].data;
-        event['dbId'] = events[i].ref.value.id;
+        event.title = "";
+        event.color = "#A9A9A9";
         clsEvents.push(event);
       }
-      calendar.setOption('events', clsEvents);
-      calendar.render();
-      setupPanel();
+      getAdminSetting()
+      .then(ret => {
+        calendar.setOption('events', clsEvents);
+        calendar.render();
+        if (option === 0) {
+          configPanel(calendar, ret.data.slotMinMax, ret.data.unavailableTimeSlots, ret.data.hiddenDays);
+          setupSubmitBtn();
+        }
+        hideLoader();
+      })
     })
-  });
-
-  function setupPanel() {
-    var adminBtn = document.getElementsByClassName('fc-timeGridWeek-button fc-button fc-button-primary fc-button-active')[0]; 
-    var prevButton = document.getElementsByClassName('fc-prev-button fc-button fc-button-primary')[0];
-    var nextButton = document.getElementsByClassName('fc-next-button fc-button fc-button-primary')[0];  
-    var todayButton = document.getElementsByClassName('fc-today-button fc-button fc-button-primary')[0];  
-    // var loader = document.getElementById('loader');
-    // loader.setAttribute("style", "display:none");
-    prevButton.setAttribute("onclick", "refreshAdminBtn();");
-    nextButton.setAttribute("onclick", "refreshAdminBtn();");
-    todayButton.setAttribute("onclick", "refreshAdminBtn();");
-    adminBtn.setAttribute("onclick", "redirectAdmin();");
-    adminBtn.setAttribute("onclick", "adminInfo();");
-    refreshAdminBtn();
   }
 
-  function refreshAdminBtn() {
-    var adminBtn = document.getElementsByClassName('fc-timeGridWeek-button fc-button fc-button-primary fc-button-active')[0];
-    adminBtn.innerHTML = "使用指南";
+  function hideLoader() {
+    let loader = document.getElementById("loader");
+    loader.setAttribute("style","display: none;");
+  }
+
+  function configPanel(calendar, slotMinMax, unavailableTimeSlots, hiddenDays) {
+    //设置最早最晚时间
+    calendar.setOption('slotMinTime', `${slotMinMax[0]}:00:00`);
+    calendar.setOption('slotMaxTime', `${slotMinMax[1]}:00:00`);
+    //设置不可选时间段
+    for(let i = 0; i < unavailableTimeSlots.length; i++) {
+      setUnavailableTimeSlots(calendar, unavailableTimeSlots[i][0], unavailableTimeSlots[i][1]);
+    }
+    //设置不可选工作日
+    calendar.setOption('hiddenDays', hiddenDays);
+  }
+  
+  function setupSubmitBtn() {
+    let topEle = document.getElementsByClassName("fc-header-toolbar fc-toolbar fc-toolbar-ltr")[0];
+    let submitBtn = document.createElement("button");
+    submitBtn.innerHTML = "提交选课";
+    submitBtn.className = "fc-timeGridWeek-button fc-button fc-button-primary fc-button-active"
+    topEle.appendChild(submitBtn);
+    submitBtn.setAttribute("onclick", "onSubmit()");
   }
 
   function redirectAdmin(){
@@ -119,8 +107,36 @@
     window.location.href= prefix + '/tutor-view.html';
   }
 
-  function adminInfo(){
-    alert("欢迎使用pte课程预定系统");
+  function onSubmit(){
+    if (!startTime || !endTime) {
+      return;
+    }
+    let startInputEle = document.getElementById("start-info");
+    let endInputEle = document.getElementById("end-info");
+    startInputEle.setAttribute("value", startTime.toLocaleString("zh-cn"));
+    endInputEle.setAttribute("value", endTime.toLocaleString("zh-cn"));
+
+    let calendar = document.getElementById("calendar");
+    calendar.setAttribute("style", "display: none");
+
+    let linkNode = document.getElementsByTagName('link')[1];
+    linkNode.disabled = false;
+
+    let bookPanel = document.getElementById("book-panel");
+    bookPanel.setAttribute("style", "display: block");
+  }
+
+  function returnBack() {
+    let bookPanel = document.getElementById("book-panel");
+    bookPanel.setAttribute("style", "display: none");
+
+    let linkNode = document.getElementsByTagName('link')[1];
+    linkNode.disabled = true;
+
+    loadPanel(1);
+    
+    let calendar = document.getElementById("calendar");
+    calendar.setAttribute("style", "display: block");
   }
 
   function setUnavailableTimeSlots(calendar, startHour, endHour) {
@@ -136,7 +152,6 @@
   function setUnavailableTimeSlot(start, end) {
     var eventItem = {
       id: new Date().valueOf() + Math.round(Math.random() * 100),
-      title: "不可选",
       start: start,
       end: end,
       color: '#A9A9A9'
@@ -146,6 +161,33 @@
 
   function isValid(str){
     return !/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g.test(str);
+  }
+
+  function prepareSubmitForm() {
+    const form = document.getElementById('submit-form');
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      let studentName = event.srcElement[2].value;
+      let phoneNum = event.srcElement[3].value;
+      submitBooking(studentName, phoneNum);
+    });
+  }
+
+  function submitBooking(studentName, phoneNum) {
+    let start = startTime;
+    let end = endTime;
+    let id = new Date().valueOf() + Math.round(Math.random() * 100);
+    var newEvent = {
+      id: id,
+      title: studentName,
+      contact: phoneNum,
+      start: start.toISOString(),
+      end: end.toISOString()
+    };
+    faunaAddEvent(newEvent).then(res => {
+      calendar.unselect();
+      returnBack();
+    })
   }
 
 </script>
@@ -189,30 +231,84 @@
   #loader-1 {
     transform:scale(1.3);
   }
+  
+  .fc-header-toolbar.fc-toolbar.fc-toolbar-ltr .fc-toolbar-chunk:nth-child(3) {
+    display:none !important;
+  }
+
+  .grid {
+    max-inline-size: 25rem;
+  }
+
+  #start-info, #end-info {
+    background-color: #1186ed;
+  }
+
+  #start-info:hover, #end-info:hover {
+    background-color: #1186ed;
+  }
 </style>
 </head>
 
-<body>
+<body class="align">
   <div id='calendar'>
-    <!-- loader -->
-    <div class="loader loader--style1" id="loader" title="0">
-      <svg version="1.1" id="loader-1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-      width="80px" height="80px" viewBox="0 0 40 40" enable-background="new 0 0 40 40" xml:space="preserve">
-      <path opacity="0.2" fill="#000" d="M20.201,5.169c-8.254,0-14.946,6.692-14.946,14.946c0,8.255,6.692,14.946,14.946,14.946
-        s14.946-6.691,14.946-14.946C35.146,11.861,28.455,5.169,20.201,5.169z M20.201,31.749c-6.425,0-11.634-5.208-11.634-11.634
-        c0-6.425,5.209-11.634,11.634-11.634c6.425,0,11.633,5.209,11.633,11.634C31.834,26.541,26.626,31.749,20.201,31.749z"/>
-      <path fill="#000" d="M26.013,10.047l1.654-2.866c-2.198-1.272-4.743-2.012-7.466-2.012h0v3.312h0
-        C22.32,8.481,24.301,9.057,26.013,10.047z">
-        <animateTransform attributeType="xml"
-          attributeName="transform"
-          type="rotate"
-          from="0 20 20"
-          to="360 20 20"
-          dur="0.5s"
-          repeatCount="indefinite"/>
-        </path>
-      </svg>
+    
+  </div>
+  <!-- loader -->
+  <div class="loader loader--style1" id="loader" title="0">
+    <svg version="1.1" id="loader-1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+    width="80px" height="80px" viewBox="0 0 40 40" enable-background="new 0 0 40 40" xml:space="preserve">
+    <path opacity="0.2" fill="#000" d="M20.201,5.169c-8.254,0-14.946,6.692-14.946,14.946c0,8.255,6.692,14.946,14.946,14.946
+      s14.946-6.691,14.946-14.946C35.146,11.861,28.455,5.169,20.201,5.169z M20.201,31.749c-6.425,0-11.634-5.208-11.634-11.634
+      c0-6.425,5.209-11.634,11.634-11.634c6.425,0,11.633,5.209,11.633,11.634C31.834,26.541,26.626,31.749,20.201,31.749z"/>
+    <path fill="#000" d="M26.013,10.047l1.654-2.866c-2.198-1.272-4.743-2.012-7.466-2.012h0v3.312h0
+      C22.32,8.481,24.301,9.057,26.013,10.047z">
+      <animateTransform attributeType="xml"
+        attributeName="transform"
+        type="rotate"
+        from="0 20 20"
+        to="360 20 20"
+        dur="0.5s"
+        repeatCount="indefinite"/>
+      </path>
+    </svg>
+  </div>
+
+  <div class="grid" id="book-panel" style="display: none">
+    <div id="login-panel-title">
+      选课提交信息确认
     </div>
+    <form class="form login" id="submit-form">
+      <div class="form__field">
+        <label for="start-info" style="inline-size: 200px;"><span>课程开始时间</span></label>
+        <input id="start-info" type="text" name="quantity" value="20:00" placeholder="如1-2,3-4" readonly>
+      </div>
+      <div class="form__field">
+        <label for="end-info" style="inline-size: 200px;"><span>课程结束时间</span></label>
+        <input id="end-info" type="text" name="quantity" value="20:00" placeholder="如1-2,3-4" readonly>
+      </div>
+      <div class="form__field">
+        <label for="name" style="inline-size: 200px;"><span>学员姓名</span></label>
+        <input id="name" type="text" name="quantity" placeholder="请输入姓名" maxlength="10" required>
+      </div>
+
+      <div class="form__field">
+        <label for="phone" style="inline-size: 200px;"><span>手机号</span></label>
+        <input id="phone" type="text" name="quantity" placeholder="填写手机号接收确认消息" maxlength="20" required>
+      </div>
+
+      <div>
+        <div class="form__field" style="float:right; width:45%;">
+          <input type="submit" id="save-btn" value="提交">
+        </div>
+        <div class="form__field" style="float:left; width:45%;">
+          <input class="return" id="exit-btn" onclick="returnBack()" value="返回">
+        </div>
+      </div>
+
+      <!-- <span id="admin-message" style="display:none"></span> -->
+      <ul id="admin-messages" style="list-style-type: none; padding-left: 5px; margin: 0;"></ul>
+    </form>
   </div>
 
 </body>

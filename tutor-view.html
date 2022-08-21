@@ -19,10 +19,10 @@
     [22, 23]
   ];
   let hiddenDays = [];
+  let calendar = null;
   document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
-
-    var calendar = new FullCalendar.Calendar(calendarEl, {
+    calendar = new FullCalendar.Calendar(calendarEl, {
       headerToolbar: {
         left: 'prevYear,prev,next,nextYear today',
         center: 'title',
@@ -45,21 +45,26 @@
         if (confirmDeleting) {
           faunaDeleteEvent(dbId)
           .then(res => {
-            loadPanel(calendar);
+            loadPanel();
           });
         }
       }
     });
-    prepareLoginForm(calendar);
+    prepareLoginForm();
+    prepareAdminForm();
   });
 
-  function loadPanel(calendar) {
+  function loadPanel() {
     faunaGetEvents()
     .then(events => {
       let clsEvents = []
       for (let i = 0; i < events.length; i++) {
         let event = events[i].data;
         event['dbId'] = events[i].ref.value.id;
+        let eventContact = event.contact;
+        if (eventContact) {
+          event.title = event.title + " " + eventContact;
+        }
         clsEvents.push(event);
       }
       calendar.setOption('events', clsEvents);
@@ -68,6 +73,10 @@
       calendar.render();
       let loader = document.getElementById("loader");
       loader.setAttribute("style","display:none");
+      getAdminSetting()
+      .then(ret => {
+        updateAdminPanel(ret.data.slotMinMax, ret.data.unavailableTimeSlots, ret.data.hiddenDays);
+      })
     });
   }
 
@@ -86,17 +95,152 @@
     window.location.href= prefix + '/index.html';
   }
 
-  function prepareLoginForm(calendar) {
+  function prepareLoginForm() {
     const form = document.getElementById('login-form');
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       let username = event.srcElement[0].value;
       let password = event.srcElement[1].value;
-      login(username, password, calendar);
+      login(username, password);
     });
   }
 
-  function login(username, password, calendar) {
+  function prepareAdminForm() {
+    const form = document.getElementById('admin-form');
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      let slotMin = event.srcElement[0].value;
+      let slotMax = event.srcElement[1].value;
+      let unavailableTimeSlots = event.srcElement[2].value;
+      let hiddenDays = event.srcElement[3].value;
+      adminSave(slotMin,slotMax,unavailableTimeSlots,hiddenDays);
+    });
+  }
+
+  function adminSave(slotMin, slotMax, unavailableTimeSlots, hiddenDays) {
+    let slotMinMax = prepareSlotMinMax(slotMin, slotMax);
+    let unavailableTS = prepareUnavailableTimeSlots(unavailableTimeSlots);
+    let hiddenD = prepareHiddenDays(hiddenDays);
+    if (slotMinMax == null || unavailableTS == null || hiddenD == null) {
+      return;
+    } else {
+      saveAdminSetting(slotMinMax, unavailableTS, hiddenD)
+      .then(ret => {
+        updateAdminPanel(ret.data.slotMinMax, ret.data.unavailableTimeSlots, ret.data.hiddenDays);
+        appendSuccessInfo("管理数据保存成功!");
+      })
+      .catch(err => {
+        appendErrorInfo("管理数据保存失败!");
+      })
+    }
+  }
+
+  function updateAdminPanel(slotMinMax, unavailableTS, hiddenD) {
+    let slotMin = document.getElementById("slotMin");
+    let slotMax = document.getElementById("slotMax");
+    let unavailableTimeSlots = document.getElementById("unavailableTimeSlots");
+    let hiddenDays = document.getElementById("hiddenDays");
+    slotMin.setAttribute("value", slotMinMax[0]);
+    slotMax.setAttribute("value", slotMinMax[1]);
+    let utsStrs = [];
+    for (let i = 0; i < unavailableTS.length; i++) {
+      let range = unavailableTS[i];
+      let substr = range[0].toString() + '-' + range[1].toString();
+      utsStrs.push(substr);
+    }
+    let utsStr = utsStrs.join(',');
+    unavailableTimeSlots.setAttribute("value", utsStr);
+    
+    for (let i = 0; i < hiddenD.length; i++) {
+      if (hiddenD[i] === 0) {
+        hiddenD[i] = 7;
+      }
+    }
+    let hdStr = hiddenD.join(',');
+    hiddenDays.setAttribute("value", hdStr);
+  }
+
+  function prepareSlotMinMax(slotMin, slotMax) {
+    let smmFlag = true;
+    slotMin = parseInt(slotMin);
+    slotMax = parseInt(slotMax);
+    if (slotMin === '' || slotMax === '') {
+      appendAlertInfo("起始和结束工作时间不能为空");
+      smmFlag = false;
+    } else if (slotMin < 0 || slotMin > 24 || slotMax < 0 || slotMax > 24) {
+      appendAlertInfo("起始或结束工作时间不正确");
+      smmFlag = false;
+    } else if (slotMin >= slotMax) {
+      appendAlertInfo("起始或结束工作时间不正确");
+      smmFlag = false;
+    }
+    if (!smmFlag) {
+      return null;
+    } else {
+      return [slotMin, slotMax];
+    }
+  }
+
+  function prepareUnavailableTimeSlots(unavailableTimeSlots) {
+    if (unavailableTimeSlots == '') {
+      return [];
+    }
+    let utsRegex = /^(\d+-\d+)*(,\d+-\d+)*$/;
+    let found = unavailableTimeSlots.match(utsRegex);
+    let utsFlag = true;
+    let unavailableTS = [];
+    if (found == null) {
+      utsFlag = false;
+    } else {
+      let ranges = unavailableTimeSlots.split(',');
+      for (let i = 0; i < ranges.length; i++) {
+        let before = ranges[i];
+        let after = before.split('-');
+        let left = parseInt(after[0]);
+        let right = parseInt(after[1]);
+        unavailableTS.push([left, right]);
+        if (left < 0 || left > 24 || right < 0 || right > 24 || left >= right) {
+          utsFlag = false;
+        }
+      }
+    }
+    if (!utsFlag) {
+      appendAlertInfo("设置不可选时间格式不正确");
+      return null;
+    } else {
+      return unavailableTS;
+    }
+  }
+
+  function prepareHiddenDays(hiddenDays) {
+    if (hiddenDays == '') {
+      return [];
+    }
+    let days = hiddenDays.split(',');
+    let hdFlag = true;
+    let hiddenD = [];
+    for (let i = 0; i < days.length; i++) {
+      let hiddenDay = parseInt(days[i]);
+      if (typeof hiddenDay == 'number' && hiddenDay >= 1 && hiddenDay <= 7) {
+        if (hiddenDay == 7) {
+          hiddenDay = 0;
+          hiddenD.push(hiddenDay);
+        } else {
+          hiddenD.push(hiddenDay);
+        }
+      } else {
+        hdFlag = false;
+      }
+    }
+    if (!hdFlag) {
+      appendAlertInfo("设置不可选工作日格式不正确");
+      return null;
+    } else {
+      return hiddenD;
+    }
+  }
+
+  function login(username, password) {
     let loginPanel = document.getElementById("login-panel");
     let loader = document.getElementById("loader");
     let calendarEl = document.getElementById("calendar");
@@ -109,14 +253,14 @@
         if (password == pw) {
           let linkNode = document.getElementsByTagName('link')[1];
           linkNode.disabled = true;
-          loadPanel(calendar);
+          loadPanel();
         } else {
-          alert("登陆失败，用户名密码不正确")
+          appendAlertInfo("登陆失败，用户名密码不正确")
           loginPanel.setAttribute("style","display:block");
           loader.setAttribute("style","display:none");
         }
       } else {
-        alert("登陆失败，用户名密码不正确");
+        appendAlertInfo("登陆失败，用户名密码不正确");
         loginPanel.setAttribute("style","display:block");
         loader.setAttribute("style","display:none");
       }
@@ -128,9 +272,33 @@
     adminPanel.setAttribute("style", "display:none");
     let linkNode = document.getElementsByTagName('link')[1];
     linkNode.disabled = true;
+    loadPanel();
     let calendarEl = document.getElementById("calendar");
     calendarEl.setAttribute("style","display:block");
   }
+
+  function appendSuccessInfo() {
+    let element = document.getElementById("admin-messages");
+    let listItem = document.createElement("li");
+    listItem.innerHTML = "管理数据保存成功!";
+    listItem.setAttribute("style", "color:lightgreen !important");
+    element.appendChild(listItem);
+    setTimeout(() => {
+      element.removeChild(listItem);
+    }, 3000);
+  }
+
+  function appendAlertInfo(message) {
+    let element = document.getElementById("admin-messages");
+    let listItem = document.createElement("li");
+    listItem.innerHTML = message;
+    listItem.setAttribute("style", "color:#c42525 !important");
+    element.appendChild(listItem);
+    setTimeout(() => {
+      element.removeChild(listItem);
+    }, 3000);
+  }
+
 
 </script>
 <style>
@@ -244,25 +412,25 @@
     <div id="login-panel-title">
       在线约课管理系统Admin
     </div>
-    <form class="form login" id="login-form">
+    <form class="form login" id="admin-form">
       <div class="form__field">
         <label for="slotMin"><span>起始工作时间(0-24点)</span></label>
-        <input id="slotMin" type="number" id="quantity" name="quantity1" min="0" max="24" value="8">
+        <input id="slotMin" type="number" name="slotMin" min="0" max="24" value="8">
       </div>
 
       <div class="form__field">
         <label for="slotMax"><span>结束工作时间(0-24点)</span></label>
-        <input id="slotMax" type="number" id="quantity" name="quantity2" min="0" max="24" value="23">
+        <input id="slotMax" type="number" name="slotMax" min="0" max="24" value="23">
       </div>
 
       <div class="form__field">
         <label for="unavailableTimeSlots"><span>全局不可选时间段(逗号隔开)</span></label>
-        <input id="unavailableTimeSlots" type="text" id="quantity3" name="quantity" value="13-14,22-23" placeholder="如1-2,3-4">
+        <input id="unavailableTimeSlots" type="text" name="unavailableTimeSlots" value="13-14,22-23" placeholder="如1-2,3-4">
       </div>
 
       <div class="form__field">
         <label for="hiddenDays"><span>不可选工作日(逗号隔开)</span></label>
-        <input id="hiddenDays" type="text" id="quantity3" name="quantity" value="" placeholder="例如:1,2">
+        <input id="hiddenDays" type="text" name="hiddenDays" value="" placeholder="例如:1,2">
       </div>
 
       <div>
@@ -273,6 +441,9 @@
           <input class="return" id="exit-btn" onclick="returnBack()" value="返回">
         </div>
       </div>
+
+      <!-- <span id="admin-message" style="display:none"></span> -->
+      <ul id="admin-messages" style="list-style-type: none; padding-left: 5px; margin: 0;"></ul>
     </form>
   </div>
 

@@ -9,9 +9,13 @@
 <script src="lib/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/faunadb@latest/dist/faunadb.js"></script>
 <script src="lib/fauna-api.js"></script>
+<script src="lib/wxpusher-api.js"></script>
 
 
 <script>
+  let code = "";
+  let uid = "";
+  let tutor_name = "";
   let eventsData = [];
   let slotMinMax = [8,23];
   let unavailableTimeSlots = [
@@ -99,9 +103,10 @@
     const form = document.getElementById('login-form');
     form.addEventListener('submit', (event) => {
       event.preventDefault();
-      let username = event.srcElement[0].value;
-      let password = event.srcElement[1].value;
-      login(username, password);
+      let tutorname = event.srcElement[0].value;
+      let username = event.srcElement[1].value;
+      let password = event.srcElement[2].value;
+      login(tutorname, username, password);
     });
   }
 
@@ -240,7 +245,7 @@
     }
   }
 
-  function login(username, password) {
+  function login(tutorname, username, password) {
     let loginPanel = document.getElementById("login-panel");
     let loader = document.getElementById("loader");
     let calendarEl = document.getElementById("calendar");
@@ -253,6 +258,7 @@
         if (password == pw) {
           let linkNode = document.getElementsByTagName('link')[1];
           linkNode.disabled = true;
+          prepareUserProfile(tutorname);
           loadPanel();
         } else {
           appendAlertInfo("登陆失败，用户名密码不正确")
@@ -297,6 +303,56 @@
     setTimeout(() => {
       element.removeChild(listItem);
     }, 3000);
+  }
+
+  function createQrCodeHtml() {
+    createQrCode().then(res => {
+      document.getElementById("qr-code").setAttribute("src",res.url);
+      code = res.code;
+      document.getElementById("login-btn-ini").setAttribute("style","display:none");
+      document.getElementById("wechat-icon").setAttribute("style","display:block;position:relative; top:150px;");
+      document.getElementById("login-panel-title").setAttribute("style","margin-bottom:-30px");
+      constantQuery();
+    });
+  }
+
+  function constantQuery() {
+      let flag = 1;
+      let query = setInterval(() => {
+          flag += 1;
+          queryWxPusher(code).then(res => {
+              if (res.code === 1000) {
+                  uid = res.data;
+                  hideQrCode();
+                  clearInterval(query);
+              }
+          })
+          if (flag > 18) {
+              document.getElementById("qr-expire").setAttribute("style", "display:block");
+              clearInterval(query);
+          }
+      }, 10000);
+  }
+
+  function hideQrCode() {
+    document.getElementById("qr-code-panel").setAttribute("style","display:none");
+    faunaFindItemByValue('tutor', 'uid', uid)
+    .then(res => {
+      if (JSON.stringify(res) !== JSON.stringify({})) {
+        tutor_name = res.data.tutor_name;
+        document.getElementById("loader").setAttribute("style","display:block");
+        let linkNode = document.getElementsByTagName('link')[1];
+        linkNode.disabled = true;
+        loadPanel();
+      } else {
+        document.getElementById("login-panel").setAttribute("style","display:block");
+      }
+    });
+  }
+
+  function prepareUserProfile(name) {
+    let tutor = {tutor_name: name, uid: uid};
+    faunaAddTutor(tutor);
   }
 
 
@@ -348,12 +404,28 @@
   <div id='calendar' style="display:none">
     <button onclick='adminPanel()' class="fc-button fc-button-primary fc-button-active">进入管理界面</button>
   </div>
-
-  <div class="grid" id="login-panel">
+  <div id="qr-code-panel" style="display:flex; flex-direction: column; align-items: center;">
     <div id="login-panel-title">
       欢迎使用在线约课管理系统
     </div>
+    <img id="wechat-icon" width="50px" style="display:none" src="assets/wechat-icon.png">
+    <button class="btn-normal" id="login-btn-ini" style="margin:20px 0;cursor: pointer;" onclick="createQrCodeHtml()">登陆</button>
+    <img id="qr-code" width="250px" src="">
+    <span id="qr-expire" style="display:none;color:white">已过期，请重新刷新页面</span>
+  </div>
+
+  <div class="grid" id="login-panel" style="display:none">
+    <div id="login-panel-title">
+      请输入您的姓名, 管理员用户名，密码
+    </div>
     <form class="form login" id="login-form">
+      <div class="form__field">
+        <label for="login__tutorname"><svg class="icon">
+            <use xlink:href="#icon-user"></use>
+          </svg><span class="hidden">姓名</span></label>
+        <input autocomplete="tutorname" id="login__tutorname" type="text" name="tutorname" class="form__input" placeholder=" 姓名" required>
+      </div>
+
       <div class="form__field">
         <label for="login__username"><svg class="icon">
             <use xlink:href="#icon-user"></use>
@@ -372,9 +444,9 @@
         <input type="submit" id="login-btn" value="登陆">
       </div>
     </form>
-    <p class="text--center">还不是成员? <a href="#">点此注册</a> <svg class="icon">
+    <!-- <p class="text--center">还不是成员? <a href="#">点此注册</a> <svg class="icon">
         <use xlink:href="#icon-arrow-right"></use>
-      </svg></p>
+      </svg></p> -->
   </div>
 
   <div class="loader loader--style1" id="loader" style="display:none" title="0">

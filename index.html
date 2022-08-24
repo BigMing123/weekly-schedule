@@ -17,6 +17,7 @@
   let calendar = null;
   let startTime = null;
   let endTime = null;
+  let selectedSlots = [];
   document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
     calendar = new FullCalendar.Calendar(calendarEl, {
@@ -29,9 +30,72 @@
         center: 'title',
         right: 'timeGridWeek'
       },
+      eventClick: function(info) {
+        let dbId = info.event.extendedProps.dbId;
+        let start = info.event._instance.range.start;
+        let end = info.event._instance.range.end;
+        let title = info.event.title;
+        let event = {};
+        for (let i = 0; i < eventsData.length; i++) {
+          if (eventsData[i].dbId === dbId) {
+            if (eventsData[i].status === 'selectable') {
+              selectedSlots.push(dbId);
+              eventsData[i].status = 'selected';
+              eventsData[i].color = '#cc7b25';
+              eventsData[i].title = '已选择';
+            } else if (eventsData[i].status === 'selected'){  
+              selectedSlots.splice(selectedSlots.indexOf(dbId), 1);
+              eventsData[i].status = 'selectable';
+              eventsData[i].color = '#29b80d';
+              eventsData[i].title = '';
+            }
+            event = eventsData[i];
+          }
+        }
+        let events = [
+          {
+                "id": 1661083106993,
+                "title": "",
+                "contact": "1234567891",
+                "start": "2022-08-18T01:00:00.000Z",
+                "end": "2022-08-18T02:30:00.000Z",
+                "color": "#A9A9A9",
+                "dbId": "a123",
+                "status": "unSelectable"  //可预定，被预订，不可预定，已选择
+            },
+            {
+                "id": 1661082904603,
+                "title": "",
+                "contact": "1234567891",
+                "start": "2022-08-21T04:10:00.000Z",
+                "end": "2022-08-21T07:10:00.000Z",
+                "color": "#A9A9A9",
+                "dbId":"a124",
+                "status":"taken"
+            },
+            {
+                "id": 1661083106993,
+                "title": "已选择",
+                "contact": "1234567891",
+                "start": "2022-08-28T01:00:00.000Z",
+                "end": "2022-08-28T02:30:00.000Z",
+                "color": '#cc7b25',
+                "dbId":"a125",
+                "status":"selected"
+            },
+          ]
+        events[2].color ="black";
+        console.log(events)
+        console.log(eventsData)
+        let testEvents = eventsData;
+        
+        calendar.setOption('events', events);
+        calendar.render();
+        
+      },
       navLinks: true, // can click day/week names to navigate views
       editable: false,
-      selectable: true,
+      selectable: false,
       selectMirror: true,
       dayMaxEvents: true, // allow "more" link when too many events
       events: eventsData,
@@ -43,14 +107,68 @@
       },
       selectOverlap : false,
       validRange: {
-          start: new Date(),
+          start: new Date(new Date().setDate(new Date().getDate() - 6)),
           end: new Date(new Date().setDate(new Date().getDate() + 30))
       },
       hiddenDays: []   //设置不可选的工作日，1,3 代表周一周三 0代表周日
     });
-    loadPanel(0);
-    prepareSubmitForm();
+    // loadPanel(0);
+    // prepareSubmitForm();
+    test(0);
+
   });
+
+
+
+  function test(option) {
+    let events = [
+    {
+          "id": 1661083106993,
+          "title": "",
+          "contact": "1234567891",
+          "start": "2022-08-18T01:00:00.000Z",
+          "end": "2022-08-18T02:30:00.000Z",
+          "color": "#A9A9A9",
+          "dbId": "a123",
+          "status": "unSelectable"  //可预定，被预订，不可预定，已选择
+      },
+      {
+          "id": 1661082904603,
+          "title": "",
+          "contact": "1234567891",
+          "start": "2022-08-21T04:10:00.000Z",
+          "end": "2022-08-21T07:10:00.000Z",
+          "color": "#A9A9A9",
+          "dbId":"a124",
+          "status":"taken"
+      },
+      {
+          "id": 1661083106993,
+          "title": "",
+          "contact": "1234567891",
+          "start": "2022-08-28T01:00:00.000Z",
+          "end": "2022-08-28T02:30:00.000Z",
+          "color": "#29b80d",
+          "dbId":"a125",
+          "status":"selectable"
+      },
+    ]
+    
+    
+    getAdminSetting()
+    .then(ret => {
+      calendar.setOption('events', events);
+      eventsData = events;
+      calendar.render();
+      calendar.today();
+      if (option === 0) {
+        configPanel(calendar, ret.data.slotMinMax, ret.data.unavailableTimeSlots, ret.data.hiddenDays);
+        setupSubmitBtn();
+      }
+      hideLoader();
+    })
+
+  }
 
   function loadPanel(option) { //option 0 表示一开始加载网页，option 1 表示之后重新加载
     faunaGetEvents()
@@ -58,12 +176,14 @@
       let clsEvents = []
       for (let i = 0; i < events.length; i++) {
         let event = events[i].data;
+        event.dbId = events[i].ref.id;
         event.title = "";
         event.color = "#A9A9A9";
         clsEvents.push(event);
       }
       getAdminSetting()
       .then(ret => {
+        eventsData = clsEvents;
         calendar.setOption('events', clsEvents);
         calendar.render();
         if (option === 0) {
@@ -96,7 +216,7 @@
     let topEle = document.getElementsByClassName("fc-header-toolbar fc-toolbar fc-toolbar-ltr")[0];
     let submitBtn = document.createElement("button");
     submitBtn.innerHTML = "提交选课";
-    submitBtn.className = "fc-timeGridWeek-button fc-button fc-button-primary fc-button-active"
+    submitBtn.className = "fc-timeGridWeek-button fc-button fc-button-primary fc-button-active";
     topEle.appendChild(submitBtn);
     submitBtn.setAttribute("onclick", "onSubmit()");
   }
@@ -290,6 +410,26 @@
     width: 50%;
     margin: 6px;
     display: none;
+  }
+
+  .fc-scrollgrid-sync-inner a.fc-col-header-cell-cushion {
+    pointer-events: none;
+  }
+
+  table.fc-scrollgrid-sync-table {
+    display: none;
+  }
+
+  div.fc-view-harness.fc-view-harness-active {
+    height: 600px !important;
+  }
+
+  .fc-timegrid-event-harness.fc-timegrid-event-harness-inset a {
+    cursor: pointer;
+  }
+
+  .fc-timegrid-slots tbody tr {
+    height: 35px;
   }
 </style>
 </head>

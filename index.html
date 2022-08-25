@@ -41,7 +41,7 @@
             if (eventsData[i].status === 'selectable') {
               selectedSlots.push(dbId);
               eventsData[i].status = 'selected';
-              eventsData[i].color = '#cc7b25';
+              eventsData[i].color = '#cc8e31';
               eventsData[i].title = '已选择';
             } else if (eventsData[i].status === 'selected'){  
               selectedSlots.splice(selectedSlots.indexOf(dbId), 1);
@@ -52,46 +52,10 @@
             event = eventsData[i];
           }
         }
-        let events = [
-          {
-                "id": 1661083106993,
-                "title": "",
-                "contact": "1234567891",
-                "start": "2022-08-18T01:00:00.000Z",
-                "end": "2022-08-18T02:30:00.000Z",
-                "color": "#A9A9A9",
-                "dbId": "a123",
-                "status": "unSelectable"  //可预定，被预订，不可预定，已选择
-            },
-            {
-                "id": 1661082904603,
-                "title": "",
-                "contact": "1234567891",
-                "start": "2022-08-21T04:10:00.000Z",
-                "end": "2022-08-21T07:10:00.000Z",
-                "color": "#A9A9A9",
-                "dbId":"a124",
-                "status":"taken"
-            },
-            {
-                "id": 1661083106993,
-                "title": "已选择",
-                "contact": "1234567891",
-                "start": "2022-08-28T01:00:00.000Z",
-                "end": "2022-08-28T02:30:00.000Z",
-                "color": '#cc7b25',
-                "dbId":"a125",
-                "status":"selected"
-            },
-          ]
-        events[2].color ="black";
-        console.log(events)
-        console.log(eventsData)
-        let testEvents = eventsData;
-        
-        calendar.setOption('events', events);
+        let newEvents = JSON.parse(JSON.stringify(eventsData));
+        calendar.setOption('events', newEvents);
         calendar.render();
-        
+        console.log(selectedSlots);
       },
       navLinks: true, // can click day/week names to navigate views
       editable: false,
@@ -112,63 +76,11 @@
       },
       hiddenDays: []   //设置不可选的工作日，1,3 代表周一周三 0代表周日
     });
-    // loadPanel(0);
-    // prepareSubmitForm();
-    test(0);
+    loadPanel(0);
+    prepareSubmitForm();
+    // test(0);
 
   });
-
-
-
-  function test(option) {
-    let events = [
-    {
-          "id": 1661083106993,
-          "title": "",
-          "contact": "1234567891",
-          "start": "2022-08-18T01:00:00.000Z",
-          "end": "2022-08-18T02:30:00.000Z",
-          "color": "#A9A9A9",
-          "dbId": "a123",
-          "status": "unSelectable"  //可预定，被预订，不可预定，已选择
-      },
-      {
-          "id": 1661082904603,
-          "title": "",
-          "contact": "1234567891",
-          "start": "2022-08-21T04:10:00.000Z",
-          "end": "2022-08-21T07:10:00.000Z",
-          "color": "#A9A9A9",
-          "dbId":"a124",
-          "status":"taken"
-      },
-      {
-          "id": 1661083106993,
-          "title": "",
-          "contact": "1234567891",
-          "start": "2022-08-28T01:00:00.000Z",
-          "end": "2022-08-28T02:30:00.000Z",
-          "color": "#29b80d",
-          "dbId":"a125",
-          "status":"selectable"
-      },
-    ]
-    
-    
-    getAdminSetting()
-    .then(ret => {
-      calendar.setOption('events', events);
-      eventsData = events;
-      calendar.render();
-      calendar.today();
-      if (option === 0) {
-        configPanel(calendar, ret.data.slotMinMax, ret.data.unavailableTimeSlots, ret.data.hiddenDays);
-        setupSubmitBtn();
-      }
-      hideLoader();
-    })
-
-  }
 
   function loadPanel(option) { //option 0 表示一开始加载网页，option 1 表示之后重新加载
     faunaGetEvents()
@@ -178,7 +90,12 @@
         let event = events[i].data;
         event.dbId = events[i].ref.id;
         event.title = "";
-        event.color = "#A9A9A9";
+        if (event.status === 'taken' || new Date() > new Date(event.start)) {
+          event.color = "#A9A9A9";
+        } else {
+          event.color = "#29b80d";
+          event.status = "selectable";
+        }
         clsEvents.push(event);
       }
       getAdminSetting()
@@ -430,6 +347,20 @@
 
   .fc-timegrid-slots tbody tr {
     height: 35px;
+  }
+
+  .fc-event-main-frame .fc-event-time {
+    flex-grow: 4;
+    text-align: center;
+    font-size:14px !important;
+    display:flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .fc-event-main-frame .fc-event-title-container {
+    position: absolute;
+    flex-grow: 0;
   }
 </style>
 </head>

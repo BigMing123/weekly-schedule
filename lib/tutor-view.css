@@ -245,4 +245,50 @@
     background-color: var(--loginSubmitHoverBackgroundColor);
     cursor: pointer;
   }
+
+  /* admin panel */
+  #calendar2 .fc-button.fc-button-primary.fc-button-active {
+    width:100px;
+  }
+
+  #calendar2 .fc-button.fc-button-primary {
+    background-color: var(--loginSubmitBackgroundColor);
+  }
   
+
+/* rainbow effect */
+#calendar2.active .fc-daygrid-day-frame.fc-scrollgrid-sync-inner {
+    border: 5px dashed;
+    animation-name: bordereffect;
+    animation-duration: 2s;
+    animation-iteration-count: infinite;
+}
+
+/* @keyframes bordereffect {
+    0% {
+        border-top: 2px solid #1186ed;
+    }
+    25% {
+        border-right: 2px solid #1186ed;
+    }
+    50% {
+        border-bottom: 2px solid #1186ed;
+    }
+    75% {
+        border-left: 2px solid #1186ed;
+    }
+} */
+
+.fc-daygrid-day-events a {
+    font-size: 12px;
+}
+
+#calendar2.active .fc-daygrid-day-events a {
+    pointer-events: none;
+}
+
+#calendar2.active .fc-daygrid-day-top:after {
+    content: "粘贴";
+    padding: 2% 8%;
+    font-size: 15px;
+}

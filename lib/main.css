@@ -1,3 +1,9 @@
+/* custom */
+.fc-col-header-cell-cushion, .fc-daygrid-day-top a {
+  pointer-events: none;
+}
+
+
 
 /* classes attached to <body> */
 /* TODO: make fc-event selector work when calender in shadow DOM */

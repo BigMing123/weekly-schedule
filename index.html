@@ -55,7 +55,6 @@
         let newEvents = JSON.parse(JSON.stringify(eventsData));
         calendar.setOption('events', newEvents);
         calendar.render();
-        console.log(selectedSlots);
       },
       navLinks: true, // can click day/week names to navigate views
       editable: false,
@@ -78,8 +77,6 @@
     });
     loadPanel(0);
     prepareSubmitForm();
-    // test(0);
-
   });
 
   function loadPanel(option) { //option 0 表示一开始加载网页，option 1 表示之后重新加载

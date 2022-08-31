@@ -102,7 +102,7 @@
     });
     prepareLoginForm();
     prepareAddDayEvent();
-    hideQrCode(); //测试
+    // hideQrCode(); //测试
   });
 
   function avoidDouble(start, end) {
@@ -228,7 +228,7 @@
         clsEvents.push(event);
       }
       calendar.setOption('events', clsEvents);
-      let calendarEl = document.getElementById('calendar');
+      let calendarEl = document.getElementById('summary-panel');
       calendarEl.setAttribute("style","display:block");
       calendar.render();
       let loader = document.getElementById("loader");
@@ -242,8 +242,8 @@
     let loader = document.getElementById("loader");
     loader.setAttribute("style", "display:block");
     loadAdminEvents();
-    let calendarEl = document.getElementById("calendar");
-    calendarEl.setAttribute("style","display:none");
+    // let calendarEl = document.getElementById("calendar");
+    // calendarEl.setAttribute("style","display:none");
     let summary = document.getElementById("summary-panel");
     summary.setAttribute("style","display:none");
   }
@@ -344,8 +344,6 @@
     adminPanel.setAttribute("style", "display:none");
     let linkNode = document.getElementsByTagName('link')[1];
     linkNode.disabled = true;
-    let summary = document.getElementById("summary-panel");
-    summary.setAttribute("style","display:block");
     loadPanel();
   }
 
@@ -613,8 +611,8 @@
 </head>
 
 <body class="align">
-  <div id="summary-panel">
-    <div id='calendar' style="display:none">
+  <div id="summary-panel" style="display:none">
+    <div id='calendar'>
       <button onclick='adminPanel()' class="fc-button fc-button-primary fc-button-active">进入课时管理界面</button>
     </div>
   </div>

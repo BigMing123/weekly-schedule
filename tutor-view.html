@@ -102,7 +102,7 @@
     });
     prepareLoginForm();
     prepareAddDayEvent();
-    // hideQrCode(); //测试
+    hideQrCode(); //测试
   });
 
   function avoidDouble(start, end) {
@@ -242,8 +242,6 @@
     let loader = document.getElementById("loader");
     loader.setAttribute("style", "display:block");
     loadAdminEvents();
-    // let calendarEl = document.getElementById("calendar");
-    // calendarEl.setAttribute("style","display:none");
     let summary = document.getElementById("summary-panel");
     summary.setAttribute("style","display:none");
   }
@@ -446,6 +444,13 @@
     })
   }
 
+  function hideLoaderShowAdmin() {
+    let loader = document.getElementById("loader");
+    loader.setAttribute("style", "display:none");
+    let adminPanel = document.getElementById("admin-panel");
+    adminPanel.setAttribute("style", "display:block");
+  }
+
   function loadAdminEvents() {
     adminEvents = [];
     let startISOstr = new Date(adminMonthStart.getTime());
@@ -460,11 +465,8 @@
     endISOstr = endISOstr.toISOString();
     faunaGetEventsCurrentMonth(startISOstr, endISOstr)
     .then(events => {
-      let loader = document.getElementById("loader");
-      loader.setAttribute("style", "display:none");
-      let adminPanel = document.getElementById("admin-panel");
-      adminPanel.setAttribute("style", "display:block");
-
+      hideLoaderShowAdmin();
+      
       events.map(event => {
         let newEvent = event.data;
         newEvent.start = newEvent.start.value;

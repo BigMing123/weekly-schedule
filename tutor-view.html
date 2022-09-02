@@ -82,11 +82,8 @@
       events: eventsData,
       editable: false,
       eventClick: function(info) {
-        // console.log("event clicked");
         let start = info.event._instance.range.start;
         let end = info.event._instance.range.end;
-        // console.log(start)
-        // console.log(end)
       },
       validRange: {
         start: adminMonthStart,
@@ -100,7 +97,8 @@
         } else {
           showConfigDayWindow(1);
         }
-      }
+      },
+      selectLongPressDelay: 1
     });
     prepareLoginForm();
     prepareAddDayEvent();

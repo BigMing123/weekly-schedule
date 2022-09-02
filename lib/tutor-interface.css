@@ -1,0 +1,116 @@
+#calendar, #admin-panel {
+    width:100%;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  #admin-panel h2 {
+    color:white;
+  }
+
+  .fc-header-toolbar.fc-toolbar.fc-toolbar-ltr .fc-toolbar-chunk:nth-child(3) {
+    display:none !important;
+  }
+
+  #loader-1 {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+  }
+
+  .fc-button.fc-button-primary.fc-button-active {
+    width:100%;
+  }
+
+  #calendar table.fc-scrollgrid-sync-table {
+    /* height: 75vh !important; */
+    display: none;
+  }
+
+  #calendar2 table.fc-scrollgrid-sync-table {
+    height: 75vh !important;
+  }
+
+  /* 设置表格高度 */
+  .fc-view-harness.fc-view-harness-active {
+    height: 79vh !important;
+  }
+
+  input[type='number'] {
+    color:black;
+    width:143px;
+    padding:15px;
+  } 
+
+  #config-day {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    align-items: center;
+    top: 45%;
+    left: 35%;
+    background-color: #1186ed;
+    padding: 15px 10px;
+    z-index: 10;
+    display: none;
+    border-radius: 5px;
+  }
+
+  #config-day fieldset {
+    border: none;
+    color: white;
+    padding: 0 5px;
+  }
+
+  #config-day fieldset input[type="time"] {
+    color: #2c3338;
+    width: 100px;
+  }
+
+  #config-day input[type="submit"] {
+    height: 25px;
+    width: 80px;
+    background-color: #2c3338;
+    border-radius: 3px;
+  }
+
+  #config-day input[type="button"] {
+    height: 25px;
+    width: 50px;
+    background-color: #2c3338;
+    border-radius: 3px;
+  }
+
+  .fc-popover-body .fc-daygrid-event-harness a {
+    color: #2c3338;
+  }
+
+  #calendar2 td.fc-daygrid-day.fc-day.fc-day-disabled {
+    opacity: 0;
+  }
+
+  #config-day .top-level fieldset {
+    margin: 0px 5px;
+  }
+
+  #config-day .bottom-level {
+    margin-top: 15px;
+  }
+
+  #config-window-back {
+    cursor: pointer;
+    color: white;
+    block-size: auto;
+    background-color: transparent !important;
+    text-decoration: underline;
+  }
+
+  #admin-messages {
+    list-style: none;
+    position: absolute;
+    bottom: 45%;
+    left: 45%;
+  }

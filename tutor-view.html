@@ -3,7 +3,8 @@
 <head>
 <meta charset='utf-8' />
 <link href='lib/main.css' rel='stylesheet' />
-<link href='lib/tutor-view.css' rel='stylesheet' />
+<link href='lib/common.css' rel='stylesheet' />
+<link href='lib/tutor-interface.css' rel='stylesheet' />
 <script src='lib/main.js'></script>
 <script src='lib/locales/zh-cn.js'></script>
 <script src="lib/axios.min.js"></script>
@@ -14,7 +15,8 @@
 
 <script>
   let code = "";
-  let uid = 'UID_U6cNrnSNU6jWHgwxw9Z4YXJoOaO1'; //测试
+  // let uid = 'UID_U6cNrnSNU6jWHgwxw9Z4YXJoOaO1'; //测试
+  let uid = '';
   let tutor_name = "";
   let eventsData = [];
   let slotMinMax = [8,23];
@@ -102,7 +104,7 @@
     });
     prepareLoginForm();
     prepareAddDayEvent();
-    hideQrCode(); //测试
+    // hideQrCode(); //测试
   });
 
   function avoidDouble(start, end) {
@@ -309,7 +311,7 @@
   function login(tutorname, username, password) {
     let loginPanel = document.getElementById("login-panel");
     let loader = document.getElementById("loader");
-    let calendarEl = document.getElementById("calendar");
+    // let calendarEl = document.getElementById("calendar");
     loginPanel.setAttribute("style","display:none");
     loader.setAttribute("style","display:block");
     faunaFindItemByValue('user', 'username', username)
@@ -368,14 +370,20 @@
   }
 
   function createQrCodeHtml() {
-    createQrCode().then(res => {
+    document.getElementById('login-btn-ini').setAttribute("disabled", "true");
+    document.getElementById("qr-info").setAttribute("style", "display:block");
+    createQrCode()
+    .then(res => {
       document.getElementById("qr-code").setAttribute("src",res.url);
       code = res.code;
       document.getElementById("login-btn-ini").setAttribute("style","display:none");
       document.getElementById("wechat-icon").setAttribute("style","display:block;position:relative; top:150px;");
       document.getElementById("login-panel-title").setAttribute("style","margin-bottom:-30px");
       constantQuery();
-    });
+    })
+    .finally(() => {
+      document.getElementById('login-btn-ini').setAttribute("disabled", "false");
+    })
   }
 
   function constantQuery() {
@@ -391,6 +399,7 @@
           })
           if (flag > 18) {
               document.getElementById("qr-expire").setAttribute("style", "display:block");
+              document.getElementById("qr-info").setAttribute("style", "display:none");
               clearInterval(query);
           }
       }, 10000);
@@ -484,132 +493,6 @@
   
 
 </script>
-<style>
-
-  body {
-    margin: 20px 10px;
-    padding: 0;
-    font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
-    font-size: 14px;
-  }
-
-  #calendar, #admin-panel {
-    width:100%;
-    max-width: 1100px;
-    margin: 0 auto;
-  }
-
-  #admin-panel h2 {
-    color:white;
-  }
-
-  .fc-header-toolbar.fc-toolbar.fc-toolbar-ltr .fc-toolbar-chunk:nth-child(3) {
-    display:none !important;
-  }
-
-  #loader-1 {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    margin: auto;
-  }
-
-  .fc-button.fc-button-primary.fc-button-active {
-    width:100%;
-  }
-
-  #calendar table.fc-scrollgrid-sync-table {
-    /* height: 75vh !important; */
-    display: none;
-  }
-
-  #calendar2 table.fc-scrollgrid-sync-table {
-    height: 75vh !important;
-  }
-
-  /* 设置表格高度 */
-  .fc-view-harness.fc-view-harness-active {
-    height: 79vh !important;
-  }
-
-  input[type='number'] {
-    color:black;
-    width:143px;
-    padding:15px;
-  } 
-
-  #config-day {
-    display: flex;
-    flex-direction: column;
-    position: absolute;
-    align-items: center;
-    top: 45%;
-    left: 35%;
-    background-color: #1186ed;
-    padding: 15px 10px;
-    z-index: 10;
-    display: none;
-    border-radius: 5px;
-  }
-
-  #config-day fieldset {
-    border: none;
-    color: white;
-    padding: 0 5px;
-  }
-
-  #config-day fieldset input[type="time"] {
-    color: #2c3338;
-    width: 100px;
-  }
-
-  #config-day input[type="submit"] {
-    height: 25px;
-    width: 80px;
-    background-color: #2c3338;
-    border-radius: 3px;
-  }
-
-  #config-day input[type="button"] {
-    height: 25px;
-    width: 50px;
-    background-color: #2c3338;
-    border-radius: 3px;
-  }
-
-  .fc-popover-body .fc-daygrid-event-harness a {
-    color: #2c3338;
-  }
-
-  #calendar2 td.fc-daygrid-day.fc-day.fc-day-disabled {
-    opacity: 0;
-  }
-
-  #config-day .top-level fieldset {
-    margin: 0px 5px;
-  }
-
-  #config-day .bottom-level {
-    margin-top: 15px;
-  }
-
-  #config-window-back {
-    cursor: pointer;
-    color: white;
-    block-size: auto;
-    background-color: transparent !important;
-    text-decoration: underline;
-  }
-
-  #admin-messages {
-    list-style: none;
-    position: absolute;
-    bottom: 45%;
-    left: 45%;
-  }
-</style>
 </head>
 
 <body class="align">
@@ -625,7 +508,8 @@
     <img id="wechat-icon" width="50px" style="display:none" src="assets/wechat-icon.png">
     <button class="btn-normal" id="login-btn-ini" style="margin:20px 0;cursor: pointer;" onclick="createQrCodeHtml()">登陆</button>
     <img id="qr-code" width="250px" src="">
-    <span id="qr-expire" style="display:none;color:white">已过期，请重新刷新页面</span>
+    <span id="qr-info" style="display:none;">扫码后等待5秒左右，自动跳转</span>
+    <span id="qr-expire" style="display:none;">已过期，请刷新页面重新扫码</span>
   </div>
 
   <div class="grid" id="login-panel" style="display:none">

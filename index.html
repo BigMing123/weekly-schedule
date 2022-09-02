@@ -3,19 +3,24 @@
 <head>
 <meta charset='utf-8' />
 <link href='lib/main.css' rel='stylesheet' />
-<link href='lib/tutor-view.css' rel='stylesheet' />
+<link href='lib/common.css' rel='stylesheet' />
+<link href='lib/student-interface.css' rel='stylesheet' />
 <script src='lib/main.js'></script>
 <script src='lib/locales/zh-cn.js'></script>
 <script src="lib/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/faunadb@latest/dist/faunadb.js"></script>
 <script src="lib/fauna-api.js"></script>
+<script src="lib/wxpusher-api.js"></script>
 <script>
-  let linkNode = document.getElementsByTagName('link')[1];
-  linkNode.disabled = true;
   let eventsData = [];
   let hiddenDays = [];
   let calendar = null;
   let selectedSlots = [];
+  let code = "";
+  let uid = "";
+  let studentname = "";
+  let contact = "";
+  let targetscore = "";
   const maxCourseCount = 5; //最多一次选课多少节
   const monthStart = new Date(new Date().setMonth(new Date().getMonth()));
   const monthEnd = new Date(new Date().setMonth(new Date().getMonth() + 1));
@@ -84,20 +89,29 @@
       slotMinTime: '07:00:00',
       slotMaxTime: '22:00:00'
     });
-    // loadPanel(0);
-    loadAdminEvents(0);
-    prepareSubmitForm();
+    prepareLoginForm();
+    // document.getElementById("qr-code-panel").setAttribute("style","display:none");
+    // showLoader();
+    // loadPanel();
   });
 
+  function loadPanel() {
+    let linkNode = document.getElementsByTagName('link')[1];
+    linkNode.disabled = true;
+    document.getElementById("login-panel").setAttribute("style", "display:none");
+    loadAdminEvents(0);
+    prepareSubmitForm();
+  }
+
   function hideLoader() {
-    let loader = document.getElementById("loader");
+    let loader = document.getElementById("loader-1");
     loader.setAttribute("style","display: none;");
-    let calendar = document.getElementById("calendar");
-    calendar.setAttribute("style", "display: block");
+    let calendarEle = document.getElementById("calendar");
+    calendarEle.setAttribute("style", "display: block");
   }
 
   function showLoader() {
-    let loader = document.getElementById("loader");
+    let loader = document.getElementById("loader-1");
     loader.setAttribute("style","display: block;");
     let calendar = document.getElementById("calendar");
     calendar.setAttribute("style", "display: none");
@@ -126,6 +140,44 @@
 
     let bookPanel = document.getElementById("book-panel");
     bookPanel.setAttribute("style", "display: block");
+  }
+
+  function prepareLoginForm() {
+    const form = document.getElementById('login-form');
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      studentname = event.srcElement[0].value;
+      contact = event.srcElement[1].value;
+      targetscore = event.srcElement[2].value;
+      login();
+    });
+  }
+
+  function login() {
+    let student = {student_uid: uid, student_name: studentname, contact: contact, targetscore: targetscore};
+    faunaAddStudent(student)
+    .then(res => {
+      if (JSON.stringify(res) !== JSON.stringify({})) {
+        showLoader();
+        loadPanel();
+      }
+    })
+
+
+    faunaFindItemByValue('user', 'username', username)
+    .then((res) => {
+      if (Object.keys(res).length != 0) {
+        let pw = res.data.password;
+        let linkNode = document.getElementsByTagName('link')[1];
+        linkNode.disabled = true;
+        prepareUserProfile(tutorname);
+        loadPanel();
+      } else {
+        appendAlertInfo("登陆失败，用户名密码不正确");
+        loginPanel.setAttribute("style","display:block");
+        loader.setAttribute("style","display:none");
+      }
+    });
   }
 
   function returnBack() {
@@ -222,114 +274,108 @@
     })
   }
 
+  function createQrCodeHtml() {
+    document.getElementById('login-btn-ini').setAttribute("disabled", "true");
+    document.getElementById("qr-info").setAttribute("style", "display:block");
+    createQrCode()
+    .then(res => {
+      document.getElementById("qr-code").setAttribute("src",res.url);
+      code = res.code;
+      document.getElementById("login-btn-ini").setAttribute("style","display:none");
+      document.getElementById("wechat-icon").setAttribute("style","display:block;position:relative; top:150px;");
+      document.getElementById("login-panel-title").setAttribute("style","margin-bottom:-30px");
+      constantQuery();
+    })
+    .finally(() => {
+      document.getElementById('login-btn-ini').setAttribute("disabled", "false");
+    })
+  }
+
+  function constantQuery() {
+      let flag = 1;
+      let query = setInterval(() => {
+          flag += 1;
+          queryWxPusher(code).then(res => {
+              if (res.code === 1000) {
+                  uid = res.data;
+                  hideQrCode();
+                  clearInterval(query);
+              }
+          })
+          if (flag > 18) {
+              document.getElementById("qr-info").setAttribute("style", "display:block");
+              document.getElementById("qr-expire").setAttribute("style", "display:none");
+              clearInterval(query);
+          }
+      }, 10000);
+  }
+
+  function hideQrCode() {
+    document.getElementById("qr-code-panel").setAttribute("style","display:none");
+    document.getElementById("loader-1").setAttribute("style", "display:block");
+    faunaFindItemByValue('student', 'student_uid', uid)
+    .then(res => {
+      if (JSON.stringify(res) !== JSON.stringify({})) {
+        student_name = res.data.student_name;
+        contact = res.data.contact;
+        targetscore = res.data.targetscore;
+        document.getElementById("loader-1").setAttribute("style","display:block");
+        let linkNode = document.getElementsByTagName('link')[1];
+        linkNode.disabled = true;
+        loadPanel();
+      } else {
+        document.getElementById("loader-1").setAttribute("style", "display: none");     
+        document.getElementById("login-panel").setAttribute("style","display:block");
+      }
+    });
+  }
+
 </script>
 
-
-
-
-<style>
-  body {
-    margin: 40px 10px;
-    padding: 0;
-    font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
-    font-size: 14px;
-  }
-
-  #calendar {
-    max-width: 1100px;
-    margin: 0 auto;
-  }
-
-  .loader{
-    margin: 0 0 2em;
-    height: 100px;
-    width: 20%;
-    text-align: center;
-    padding: 1em;
-    margin: 0 auto 1em;
-    display: inline-block;
-    vertical-align: top;
-  }
-
-  #loader, #loader-1 {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    margin: auto;
-  }
-
-  #loader-1 {
-    transform:scale(1.3);
-  }
-  
-  .fc-header-toolbar.fc-toolbar.fc-toolbar-ltr .fc-toolbar-chunk:nth-child(3) {
-    display:none !important;
-  }
-
-  .grid {
-    max-inline-size: 25rem;
-  }
-
-  #start-info, #end-info {
-    background-color: #1186ed;
-  }
-
-  #start-info:hover, #end-info:hover {
-    background-color: #1186ed;
-  }
-
-  #loader-2 {
-    float: right;
-    width: 50%;
-    margin: 6px;
-    display: none;
-  }
-
-  .fc-scrollgrid-sync-inner a.fc-col-header-cell-cushion {
-    pointer-events: none;
-  }
-
-  table.fc-scrollgrid-sync-table {
-    display: none;
-  }
-
-  div.fc-view-harness.fc-view-harness-active {
-    height: 600px !important;
-  }
-
-  .fc-timegrid-event-harness.fc-timegrid-event-harness-inset a {
-    cursor: pointer;
-  }
-
-  .fc-timegrid-slots tbody tr {
-    height: 35px;
-  }
-
-  .fc-event-main-frame .fc-event-time {
-    flex-grow: 4;
-    text-align: center;
-    font-size:14px !important;
-    display:flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .fc-event-main-frame .fc-event-title-container {
-    position: absolute;
-    flex-grow: 0;
-  }
-</style>
 </head>
-
 <body class="align">
-  <div id='calendar'>
-    
+  <div id="qr-code-panel" style="display:flex; flex-direction: column; align-items: center;">
+    <div id="login-panel-title">
+      欢迎使用在线约课管理系统
+    </div>
+    <img id="wechat-icon" width="50px" style="display:none" src="assets/wechat-icon.png">
+    <button class="btn-normal" id="login-btn-ini" style="margin:20px 0;cursor: pointer;" onclick="createQrCodeHtml()">扫码登陆</button>
+    <img id="qr-code" width="250px" src="">
+    <span id="qr-info" style="display:none;">扫码后等待5秒左右，自动跳转</span>
+    <span id="qr-expire" style="display:none;">已过期，请刷新页面重新扫码</span>
   </div>
-  <!-- loader -->
-  <div class="loader loader--style1" id="loader" title="0">
-    <svg version="1.1" id="loader-1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+
+  <div class="grid" id="login-panel" style="display:none">
+    <div id="login-panel-title">
+      请输入您的基本信息
+    </div>
+    <form class="form login" id="login-form">
+      <div class="form__field">
+        <label for="login__studentname"><span>姓名</span></label>
+        <input autocomplete="studentname" id="login__studentname" type="text" name="studentname" class="form__input" placeholder="姓名或微信昵称" maxlength="10" required>
+      </div>
+
+      <div class="form__field">
+        <label for="login__contact"><span>联系方式</span></label>
+        <input autocomplete="contact" id="login__contact" type="text" 
+         name="contact" class="form__input" placeholder="电话号码" 
+         pattern="\+?[0-9 ]*" maxlength="20" required>
+      </div>
+
+      <div class="form__field">
+        <label for="login__targetscore"><span>目标分数</span></label>
+        <input id="login__targetscore" type="text" name="targetscore" class="form__input" placeholder="输入目标分" maxlength="5" required>
+      </div>
+
+      <div class="form__field">
+        <input type="submit" id="login-btn" value="登陆">
+      </div>
+    </form>
+  </div>
+
+  <div id='calendar' style="display:none"></div>
+  <div class="loader loader--style1" style="display:none" id="loader-1" title="0">
+    <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
     width="80px" height="80px" viewBox="0 0 40 40" enable-background="new 0 0 40 40" xml:space="preserve">
     <path opacity="0.2" fill="#000" d="M20.201,5.169c-8.254,0-14.946,6.692-14.946,14.946c0,8.255,6.692,14.946,14.946,14.946
       s14.946-6.691,14.946-14.946C35.146,11.861,28.455,5.169,20.201,5.169z M20.201,31.749c-6.425,0-11.634-5.208-11.634-11.634
@@ -374,23 +420,22 @@
         <div class="form__field" style="float:right; width:45%;">
           <input type="submit" id="save-btn" value="提交">
         </div>
-        <!-- loader2 -->
         <svg version="1.1" id="loader-2" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-            width="40px" height="40px" viewBox="0 0 40 40" enable-background="new 0 0 40 40" xml:space="preserve">
-            <path opacity="0.2" fill="#1186ed" d="M20.201,5.169c-8.254,0-14.946,6.692-14.946,14.946c0,8.255,6.692,14.946,14.946,14.946
-              s14.946-6.691,14.946-14.946C35.146,11.861,28.455,5.169,20.201,5.169z M20.201,31.749c-6.425,0-11.634-5.208-11.634-11.634
-              c0-6.425,5.209-11.634,11.634-11.634c6.425,0,11.633,5.209,11.633,11.634C31.834,26.541,26.626,31.749,20.201,31.749z"/>
-            <path fill="#1186ed" d="M26.013,10.047l1.654-2.866c-2.198-1.272-4.743-2.012-7.466-2.012h0v3.312h0
-              C22.32,8.481,24.301,9.057,26.013,10.047z">
-              <animateTransform attributeType="xml"
-                attributeName="transform"
-                type="rotate"
-                from="0 20 20"
-                to="360 20 20"
-                dur="0.5s"
-                repeatCount="indefinite"/>
-              </path>
-            </svg>
+          width="40px" height="40px" viewBox="0 0 40 40" enable-background="new 0 0 40 40" xml:space="preserve">
+          <path opacity="0.2" fill="#1186ed" d="M20.201,5.169c-8.254,0-14.946,6.692-14.946,14.946c0,8.255,6.692,14.946,14.946,14.946
+            s14.946-6.691,14.946-14.946C35.146,11.861,28.455,5.169,20.201,5.169z M20.201,31.749c-6.425,0-11.634-5.208-11.634-11.634
+            c0-6.425,5.209-11.634,11.634-11.634c6.425,0,11.633,5.209,11.633,11.634C31.834,26.541,26.626,31.749,20.201,31.749z"/>
+          <path fill="#1186ed" d="M26.013,10.047l1.654-2.866c-2.198-1.272-4.743-2.012-7.466-2.012h0v3.312h0
+            C22.32,8.481,24.301,9.057,26.013,10.047z">
+          <animateTransform attributeType="xml"
+            attributeName="transform"
+            type="rotate"
+            from="0 20 20"
+            to="360 20 20"
+            dur="0.5s"
+            repeatCount="indefinite"/>
+          </path>
+        </svg>
       
         <div class="form__field" style="float:left; width:45%;">
           <input class="return" id="exit-btn" onclick="returnBack()" value="返回">
@@ -399,6 +444,5 @@
       <ul id="admin-messages" style="list-style-type: none; padding-left: 5px; margin: 0;"></ul>
     </form>
   </div>
-
 </body>
 </html>

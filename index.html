@@ -16,11 +16,13 @@
   let hiddenDays = [];
   let calendar = null;
   let selectedSlots = [];
+  let startISOstr = null;
+  let endISOstr = null;
   let code = "";
   let uid = "";
-  let studentname = "";
-  let contact = "";
-  let targetscore = "";
+  let studentname = "李明晖"; //测试值
+  let contact = "+86 18278387986";
+  let targetscore = "65";
   const maxCourseCount = 5; //最多一次选课多少节
   const monthStart = new Date(new Date().setMonth(new Date().getMonth()));
   const monthEnd = new Date(new Date().setMonth(new Date().getMonth() + 1));
@@ -89,7 +91,11 @@
       slotMinTime: '07:00:00',
       slotMaxTime: '22:00:00'
     });
+    prepareISOstr();
+    prepareSubmitForm();
     prepareLoginForm();
+
+    //测试代码
     // document.getElementById("qr-code-panel").setAttribute("style","display:none");
     // showLoader();
     // loadPanel();
@@ -99,8 +105,7 @@
     let linkNode = document.getElementsByTagName('link')[1];
     linkNode.disabled = true;
     document.getElementById("login-panel").setAttribute("style", "display:none");
-    loadAdminEvents(0);
-    prepareSubmitForm();
+    prepareClientInterfaceEvents(0);
   }
 
   function hideLoader() {
@@ -127,19 +132,51 @@
   }
 
   function onSubmit(){
-    let startInputEle = document.getElementById("start-info");
-    let endInputEle = document.getElementById("end-info");
-    startInputEle.setAttribute("value", new Date().toLocaleString("zh-cn"));
-    endInputEle.setAttribute("value", new Date().toLocaleString("zh-cn"));
+    if (selectedSlots.length === 0) {
+      return;
+    }
+    let studentnameEle = document.getElementById("studentname");
+    let contactEle = document.getElementById("contact");
+    let tsEle = document.getElementById("targetscore");
+    let courseprofileEle =document.getElementById("course-profile");
 
+    studentnameEle.innerHTML = studentname;
+    contactEle.innerHTML = contact;
+    tsEle.setAttribute("value", targetscore);
+
+    displayCourseInfo(courseprofileEle);
+    displaySubmitPanel();
+  }
+
+  function displayCourseInfo(courseElement) {
+    removeAllChildNode(courseElement);
+    let listFirstItem = document.createElement("li");
+    listFirstItem.innerHTML = "预约时间(北京时间):";
+    courseElement.appendChild(listFirstItem);
+    eventsData.map(ele => {
+      if (selectedSlots.includes(ele.dbId)) {
+        let listItem = document.createElement("li");
+        let courseinfo = new Date(ele.start).toLocaleString("zh-cn") + ' - ' + new Date(ele.end).toLocaleString("zh-cn");
+        listItem.innerHTML = courseinfo;
+        courseElement.appendChild(listItem);
+
+      }
+    })
+  }
+
+  function displaySubmitPanel() {
     let calendar = document.getElementById("calendar");
     calendar.setAttribute("style", "display: none");
-
     let linkNode = document.getElementsByTagName('link')[1];
     linkNode.disabled = false;
-
     let bookPanel = document.getElementById("book-panel");
     bookPanel.setAttribute("style", "display: block");
+  }
+
+  function removeAllChildNode(parent) {
+    while (parent.firstChild) {
+        parent.removeChild(parent.firstChild);
+    }
   }
 
   function prepareLoginForm() {
@@ -188,7 +225,7 @@
     linkNode.disabled = true;
 
     showLoader();
-    loadAdminEvents(1);
+    prepareClientInterfaceEvents(1);
   }
 
   function isValid(str){
@@ -199,79 +236,153 @@
     const form = document.getElementById('submit-form');
     form.addEventListener('submit', (event) => {
       event.preventDefault();
-      console.log(111)
-      let studentName = event.srcElement[2].value;
-      let phoneNum = event.srcElement[3].value;
-      submitBooking(studentName, phoneNum);
+      let targetScore = event.srcElement[0].value;
+      let courseType = event.srcElement[1].value;
+      submitBooking(targetScore, courseType);
     });
   }
 
-  function submitBooking(studentName, phoneNum) {
-    let start = startTime;
-    let end = endTime;
+  function submitBooking(targetScore, courseType) {
+    let contactWay = contact;
+    // console.log(studentName, contactWay, selectedCourses, targetScore, courseType)
     let loader = document.getElementById("loader-2");
     let submitBtn = document.getElementById("save-btn");
     submitBtn.setAttribute("style", "display:none");
     loader.setAttribute("style", "display:block");
-    avoidDoubleBook(start,end)
+
+    let selectedEvents = [];
+    eventsData.map(event => {
+      if (selectedSlots.includes(event.dbId)) {
+        selectedEvents.push(event);
+      }
+    })
+
+    avoidDoubleBook(selectedEvents)
     .then(res => {
       if (res) {
-        let id = new Date().valueOf() + Math.round(Math.random() * 100);
-        var newEvent = {
-          id: id,
-          title: studentName,
-          contact: phoneNum,
-          start: start.toISOString(),
-          end: end.toISOString()
-        };
-        faunaAddEvent(newEvent).then(res => {
-          submitBtn.setAttribute("style", "display:block");
-          loader.setAttribute("style", "display:none");
-          calendar.unselect();
-          returnBack();
+        selectedEvents.map(selectedEvent => {
+          var newEvent = {
+            title: "",
+            contact: contact,
+            start: selectedEvent.start,
+            end: selectedEvent.end,
+            student_name: studentname,
+            couse_type: courseType,
+            target_score: targetScore
+          };
+          faunaBookEvent(newEvent).then(res => {
+            submitBtn.setAttribute("style", "display:block");
+            loader.setAttribute("style", "display:none");
+            selectedSlots = [];
+            returnBack();
+          })
         })
       } else {
-        alert("该时间段已被占用");
+        alert("预约时间段已被占用,请重新选择");
         submitBtn.setAttribute("style", "display:block");
         loader.setAttribute("style", "display:none");
+        selectedSlots = [];
         returnBack();
       }
     })
   }
 
-  function loadAdminEvents(option) {
-    let clsEvents = []
-    let startISOstr = new Date(monthStart.getTime());
+  async function avoidDoubleBook(selectedEvents) {
+    return new Promise(resolve => {
+      faunaGetBookedEventsCurrentMonth(startISOstr, endISOstr)
+      .then(events => {
+        let flag = true;
+        events.map(event => {
+          selectedEvents.map(selectedEvent => {
+            event.data.start = event.data.start.value;
+            event.data.end = event.data.end.value;
+            if (checkTimeOverlap(event.data, selectedEvent)) {
+              flag = false;
+            }
+          })
+        })
+        return resolve(flag);
+      })
+    })
+  }
+
+  function checkTimeOverlap(event, selectedEvent) {
+    let timeOverlap = false;
+    let s = new Date(event.start);
+    let e = new Date(event.end);
+    let start = new Date(selectedEvent.start); 
+    let end = new Date(selectedEvent.end);
+    if (start < e && start >= s) {
+      timeOverlap = true;
+    }
+    if (end <= e && end > s) {
+      timeOverlap = true;
+    }
+    return timeOverlap;
+  }
+
+  function prepareISOstr() {
+    startISOstr = new Date(monthStart.getTime());
     startISOstr.setHours(0);
     startISOstr.setMinutes(0);
     startISOstr.setSeconds(0);
     startISOstr = startISOstr.toISOString();
-    let endISOstr = new Date(monthEndOneDayExtra.getTime());
+    endISOstr = new Date(monthEndOneDayExtra.getTime());
     endISOstr.setHours(0);
     endISOstr.setMinutes(0);
     endISOstr.setSeconds(0);
     endISOstr = endISOstr.toISOString();
-    faunaGetEventsCurrentMonth(startISOstr, endISOstr)
-    .then(events => {
+  }
 
-      events.map(event => {
-        let newEvent = event.data;
-        newEvent.start = newEvent.start.value;
-        newEvent.end = newEvent.end.value;
+  async function prepareClientInterfaceEvents(option) {
+    return new Promise(resolve => {
+      faunaGetEventsCurrentMonth(startISOstr, endISOstr)
+      .then(adminEvents => {
+        faunaGetBookedEventsCurrentMonth(startISOstr, endISOstr)
+        .then(bookedEvents => {
+          finaliseClientInterfaceEvents(adminEvents, bookedEvents, option);
+        })
+      })
+    })
+  }
+
+  function finaliseClientInterfaceEvents(adminEvents, bookedEvents, option) {
+    let clsEvents = [];
+    let selectables = [];
+    let unSelectables = [];
+    adminEvents.map(adminEvent => {
+      let selectable = true;
+      let newEvent = {};
+      bookedEvents.map(bookedEvent => {
+        let ae = JSON.parse(JSON.stringify(adminEvent.data));
+        let be = JSON.parse(JSON.stringify(bookedEvent.data));
+        ae.start = adminEvent.data.start.value;
+        ae.end = adminEvent.data.end.value;
+        be.start = bookedEvent.data.start.value;
+        be.end = bookedEvent.data.end.value;
+        newEvent = JSON.parse(JSON.stringify(ae));
+        newEvent.dbId = adminEvent.ref.id;
+        if (checkTimeOverlap(ae, be)) {
+          selectable = false;
+        } 
+      })
+      if (selectable) {
         newEvent.color = "#29b80d";
         newEvent.status = "selectable";
-        newEvent.dbId = event.ref.id;
         clsEvents.push(newEvent);
-      })
-
-      eventsData = clsEvents;
-      hideLoader();
-      calendar.setOption('events', clsEvents);
-      calendar.render();
-      if (option === 0) {
-        setupSubmitBtn();
+      } else {
+        newEvent.color = "#bababa";
+        newEvent.status = "unSelectable";
+        clsEvents.push(newEvent);
       }
     })
+    eventsData = JSON.parse(JSON.stringify(clsEvents));
+    hideLoader();
+    calendar.setOption('events', clsEvents);
+    calendar.render();
+    if (option === 0) {
+      setupSubmitBtn();
+    }
   }
 
   function createQrCodeHtml() {
@@ -328,7 +439,7 @@
     faunaFindItemByValue('student', 'student_uid', uid)
     .then(res => {
       if (JSON.stringify(res) !== JSON.stringify({})) {
-        student_name = res.data.student_name;
+        studentname = res.data.student_name;
         contact = res.data.contact;
         targetscore = res.data.targetscore;
         document.getElementById("loader-1").setAttribute("style","display:block");
@@ -405,27 +516,30 @@
     </svg>
   </div>
 
-  <div class="grid" id="book-panel" style="display: none">
+  <div class="grid" id="book-panel" style="display: none;">
     <div id="login-panel-title">
       选课提交信息确认
     </div>
+    <div id="student-profile">
+      <div>姓名：<span id="studentname"></span></div>
+      <div>联系方式：<span id="contact"></span></div>
+    </div>
+    <ul id="course-profile"></ul>
     <form class="form login" id="submit-form">
       <div class="form__field">
-        <label for="start-info" style="inline-size: 200px;"><span>课程开始时间</span></label>
-        <input id="start-info" type="text" name="quantity" value="20:00" placeholder="如1-2,3-4" readonly>
+        <label for="targetscore"><span>目标分数</span></label>
+        <input id="targetscore" type="text" name="targetscore" placeholder="请填写目标分数" maxlength="5" required>
       </div>
       <div class="form__field">
-        <label for="end-info" style="inline-size: 200px;"><span>课程结束时间</span></label>
-        <input id="end-info" type="text" name="quantity" value="20:00" placeholder="如1-2,3-4" readonly>
-      </div>
-      <div class="form__field">
-        <label for="name" style="inline-size: 200px;"><span>学员姓名</span></label>
-        <input id="name" type="text" name="quantity" placeholder="请输入姓名" maxlength="10" required>
-      </div>
-
-      <div class="form__field">
-        <label for="phone" style="inline-size: 200px;"><span>手机号</span></label>
-        <input id="phone" type="text" name="quantity" placeholder="请填写手机号" maxlength="20" required>
+        <label for="course-type"><span>预约类型</span></label>
+        <select id="course-type" name="somename" required>
+          <option value="">请选择预约类型</option>
+          <option value="mock分析">mock分析</option>
+          <option value="口语">口语</option>
+          <option value="听力">听力</option>
+          <option value="阅读">阅读</option>
+          <option value="写作">写作</option>
+        </select>
       </div>
 
       <div>

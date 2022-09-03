@@ -25,9 +25,10 @@
     width:100%;
   }
 
+  /* 控制周视图和月视图的切换 */
   #calendar table.fc-scrollgrid-sync-table {
     /* height: 75vh !important; */
-    display: none;
+    /* display: none; */
   }
 
   #calendar2 table.fc-scrollgrid-sync-table {

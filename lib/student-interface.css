@@ -88,3 +88,35 @@
   .form label {
     width: 97px;
   }
+
+  #student-profile,
+  #course-profile {
+    display:flex;
+    flex-direction: column;
+    color: white;
+    margin: 14px 0;
+    padding: 8px 20px;
+    border-radius: 5px;
+    background-color: var(--loginLabelBackgroundColor);
+  }
+
+  ul#course-profile {
+    list-style-type: none;
+  }
+
+  #student-profile div,
+  #course-profile li {
+    margin:5px 0;
+  }
+
+  #submit-form .form__field label[for="targetscore"] {
+    inline-size: 200px;
+  }
+
+  #submit-form .form__field label[for="course-type"] {
+    inline-size: 140px;
+  }
+
+  #submit-form .form__field select {
+    inline-size: 260px;
+  }

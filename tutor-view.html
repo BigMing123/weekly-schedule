@@ -18,7 +18,8 @@
   // let uid = 'UID_U6cNrnSNU6jWHgwxw9Z4YXJoOaO1'; //测试
   let uid = '';
   let tutor_name = "";
-  let eventsData = [];
+  let bookedEventsData = [];
+  let adminEventsData = [];
   let slotMinMax = [8,23];
   let hiddenDays = [];
   let calendar = null;
@@ -27,27 +28,30 @@
   let adminEvents = [];
   let configCurrentDay = null;
   let copyEvents = [];
-  const adminMonthStart = new Date(new Date().setMonth(new Date().getMonth()));
-  const displayMonthEnd = new Date(new Date().setMonth(new Date().getMonth() + 1));
-  const adminMonthEnd = new Date(displayMonthEnd.getTime() + 86400000); //结尾多一天
+  let startISOstr = null;
+  let endISOstr = null;
+  const monthStart = new Date(new Date().setMonth(new Date().getMonth()));
+  const monthEnd = new Date(new Date().setMonth(new Date().getMonth() + 1));
+  const monthEndOneDayExtra = new Date(monthEnd.getTime() + 86400000); //结尾多一天
   document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
     calendar = new FullCalendar.Calendar(calendarEl, {
       headerToolbar: {
         left: 'prevYear,prev,next,nextYear today',
         center: 'title',
-        right: 'timeGridWeek'
+        // right: 'timeGridWeek'
+        right: 'dayGridMonth'
       },
       locale: zhCn,
       displayEventEnd: true,
       initialDate: new Date(),
-      initialView: 'timeGridWeek',
+      initialView: 'dayGridMonth',
       navLinks: true, // can click day/week names to navigate views
       editable: true,
       dayMaxEvents: true, // allow "more" link when too many events
-      slotMinTime: '07:00:00',
-      slotMaxTime: '22:00:00',
-      events: eventsData,
+      // slotMinTime: '07:00:00',
+      // slotMaxTime: '22:00:00',
+      events: bookedEventsData,
       editable: false,
       eventClick: function(info) {
         let dbId = info.event.extendedProps.dbId;
@@ -79,15 +83,15 @@
       navLinks: true, // can click day/week names to navigate views
       editable: true,
       // dayMaxEvents: true, // allow "more" link when too many events
-      events: eventsData,
+      events: adminEventsData,
       editable: false,
       eventClick: function(info) {
         let start = info.event._instance.range.start;
         let end = info.event._instance.range.end;
       },
       validRange: {
-        start: adminMonthStart,
-          end: displayMonthEnd
+        start: monthStart,
+          end: monthEnd
       },
       selectable: true,
       select: function(info) {
@@ -100,6 +104,7 @@
       },
       selectLongPressDelay: 1
     });
+    prepareISOstr();
     prepareLoginForm();
     prepareAddDayEvent();
     // hideQrCode(); //测试
@@ -159,7 +164,6 @@
       var element = document.getElementById("calendar2");
       element.classList.add("active");
     }
-    // console.log(copyEvents)
   }
 
   function finishCopyDay() {
@@ -210,10 +214,23 @@
     }
   }
 
+  function prepareISOstr() {
+    startISOstr = new Date(monthStart.getTime());
+    startISOstr.setHours(0);
+    startISOstr.setMinutes(0);
+    startISOstr.setSeconds(0);
+    startISOstr = startISOstr.toISOString();
+    endISOstr = new Date(monthEndOneDayExtra.getTime());
+    endISOstr.setHours(0);
+    endISOstr.setMinutes(0);
+    endISOstr.setSeconds(0);
+    endISOstr = endISOstr.toISOString();
+  }
+
   function loadPanel() {
     let loader = document.getElementById("loader");
     loader.setAttribute("style","display:block");
-    faunaGetEvents()
+    faunaGetBookedEventsCurrentMonth(startISOstr, endISOstr)
     .then(events => {
       let clsEvents = []
       for (let i = 0; i < events.length; i++) {
@@ -227,9 +244,11 @@
         event['end'] = event.end.value;
         clsEvents.push(event);
       }
-      calendar.setOption('events', clsEvents);
+      bookedEventsData = JSON.parse(JSON.stringify(clsEvents))
+      calendar.setOption('events', bookedEventsData);
       let calendarEl = document.getElementById('summary-panel');
       calendarEl.setAttribute("style","display:block");
+      console.log(bookedEventsData)
       calendar.render();
       let loader = document.getElementById("loader");
       loader.setAttribute("style","display:none");
@@ -472,20 +491,9 @@
 
   function loadAdminEvents() {
     adminEvents = [];
-    let startISOstr = new Date(adminMonthStart.getTime());
-    startISOstr.setHours(0);
-    startISOstr.setMinutes(0);
-    startISOstr.setSeconds(0);
-    startISOstr = startISOstr.toISOString();
-    let endISOstr = new Date(adminMonthEnd.getTime());
-    endISOstr.setHours(0);
-    endISOstr.setMinutes(0);
-    endISOstr.setSeconds(0);
-    endISOstr = endISOstr.toISOString();
     faunaGetEventsCurrentMonth(startISOstr, endISOstr)
     .then(events => {
       hideLoaderShowAdmin();
-      
       events.map(event => {
         let newEvent = event.data;
         newEvent.start = newEvent.start.value;
@@ -499,9 +507,6 @@
         setupSaveBtn();
     })
   }
-
-  
-
 </script>
 </head>
 

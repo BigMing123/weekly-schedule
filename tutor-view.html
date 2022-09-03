@@ -368,20 +368,32 @@
   }
 
   function createQrCodeHtml() {
-    document.getElementById('login-btn-ini').setAttribute("disabled", "true");
-    document.getElementById("qr-info").setAttribute("style", "display:block");
+    document.getElementById("loader").setAttribute("style", "display: block"); 
+    document.getElementById('login-btn-ini').setAttribute("style", "display: none");
+    document.getElementById("login-panel-title").setAttribute("style", "display:none");
     createQrCode()
     .then(res => {
       document.getElementById("qr-code").setAttribute("src",res.url);
       code = res.code;
-      document.getElementById("login-btn-ini").setAttribute("style","display:none");
-      document.getElementById("wechat-icon").setAttribute("style","display:block;position:relative; top:150px;");
-      document.getElementById("login-panel-title").setAttribute("style","margin-bottom:-30px");
       constantQuery();
     })
-    .finally(() => {
-      document.getElementById('login-btn-ini').setAttribute("disabled", "false");
+    .catch(err => {
+      qrCodeNotLoaded();
     })
+  }
+
+  function qrCodeLoaded() {
+    document.getElementById("loader").setAttribute("style", "display: none"); 
+    document.getElementById("qr-info").setAttribute("style", "display:block");
+    document.getElementById("login-panel-title").setAttribute("style", "display:block;margin-bottom:-30px");
+    document.getElementById("wechat-icon").setAttribute("style","display:block; position:relative; top:150px;");
+    document.getElementById("login-btn-ini").setAttribute("style","display:none");
+  }
+
+  function qrCodeNotLoaded() {
+    document.getElementById("loader").setAttribute("style", "display: none"); 
+    document.getElementById("login-btn-ini").setAttribute("style","display:block");
+    document.getElementById("login-panel-title").setAttribute("style", "display:block");
   }
 
   function constantQuery() {
@@ -505,7 +517,7 @@
     </div>
     <img id="wechat-icon" width="50px" style="display:none" src="assets/wechat-icon.png">
     <button class="btn-normal" id="login-btn-ini" style="margin:20px 0;cursor: pointer;" onclick="createQrCodeHtml()">登陆</button>
-    <img id="qr-code" width="250px" src="">
+    <img id="qr-code" width="250px" src="" onload="qrCodeLoaded()">
     <span id="qr-info" style="display:none;">扫码后等待5秒左右，自动跳转</span>
     <span id="qr-expire" style="display:none;">已过期，请刷新页面重新扫码</span>
   </div>

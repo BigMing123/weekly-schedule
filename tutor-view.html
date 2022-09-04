@@ -623,7 +623,7 @@
               if (res.code === 1000) {
                   uid = res.data;
                   let message = "您已成功登录！如果是微信手机页面登录，页面不会自动跳转，请手动退回至上一个界面";
-                  pushWxMessage(uid, message);
+                  pushWxMessage(uid, message, "https://lingyang-au-pte.com");
                   hideQrCode();
                   clearInterval(query);
               }

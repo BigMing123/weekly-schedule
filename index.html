@@ -284,8 +284,9 @@
               if (successfulCount === selectedEvents.length) {
                 let timeStr = timeStrs.join(", ");
                 let strStudent = `${studentName}同学, 您成功预约了${timeStr}的${courseType}课程, 如需变更, 请联系领洋客服进行处理`;
-                let strTutor = `${studentName}成功预约了${timeStr}的${courseType}课程, 目标分: ${res.data.target_score}, 联系方式: ${res.data.contact}`;
-                pushWxMessage(uid, strStudent);
+                let strTutor = `${studentName}成功预约了${timeStr}的${courseType}课程, 
+                                目标分: ${res.data.target_score}, 联系方式: ${res.data.contact}`;
+                pushWxMessage(uid, strStudent, "https://lingyang-au-pte.com");
                 sendTutorMsg(strTutor);
               }
             }
@@ -309,7 +310,7 @@
     faunaGetTutors()
     .then(tutors => {
       tutors.map(tutor => {
-        pushWxMessage(tutor.data.uid, msg);
+        pushWxMessage(tutor.data.uid, msg, "https://lingyang-au-pte.com/tutor-view.html");
       })
     })
   }
@@ -458,7 +459,7 @@
               if (res.code === 1000) {
                   uid = res.data;
                   let message = "您已成功登录！如果是微信手机页面登录，页面不会自动跳转，请手动退回至上一个界面";
-                  pushWxMessage(uid, message);
+                  pushWxMessage(uid, message, "https://lingyang-au-pte.com");
                   hideQrCode();
                   clearInterval(query);
               }

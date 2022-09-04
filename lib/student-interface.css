@@ -4,6 +4,14 @@
     margin: 0 auto;
   }
 
+  a,
+  li,
+  h2,
+  button, label,
+  .fc-toolbar-chunk button{
+    font-family: "poppins" !important;
+  }
+
   .loader{
     margin: 0 0 2em;
     height: 100px;

@@ -20,9 +20,9 @@
   let endISOstr = null;
   let code = "";
   let uid = "";
-  let studentname = "李明晖"; //测试值
-  let contact = "+86 18278387986";
-  let targetscore = "65";
+  let studentname = ""; //测试值
+  let contact = "";
+  let targetscore = "";
   const maxCourseCount = 5; //最多一次选课多少节
   const monthStart = new Date(new Date().setMonth(new Date().getMonth()));
   const monthEnd = new Date(new Date().setMonth(new Date().getMonth() + 1));
@@ -218,6 +218,7 @@
   }
 
   function returnBack() {
+    selectedSlots = [];
     let bookPanel = document.getElementById("book-panel");
     bookPanel.setAttribute("style", "display: none");
 
@@ -244,7 +245,6 @@
 
   function submitBooking(targetScore, courseType) {
     let contactWay = contact;
-    // console.log(studentName, contactWay, selectedCourses, targetScore, courseType)
     let loader = document.getElementById("loader-2");
     let submitBtn = document.getElementById("save-btn");
     submitBtn.setAttribute("style", "display:none");
@@ -260,6 +260,8 @@
     avoidDoubleBook(selectedEvents)
     .then(res => {
       if (res) {
+        let successfulCount = 0;
+        let timeStrs = [];
         selectedEvents.map(selectedEvent => {
           var newEvent = {
             title: "",
@@ -271,6 +273,22 @@
             target_score: targetScore
           };
           faunaBookEvent(newEvent).then(res => {
+            if (JSON.stringify(res.data) !== JSON.stringify({})) {
+              successfulCount += 1;
+              let s = new Date(res.data.start.value).toLocaleString("zh-cn");
+              let e = new Date(res.data.end.value).toLocaleString("zh-cn");
+              let studentName = res.data.student_name;
+              let courseType = res.data.course_type;
+              let timestr = `${s}-${e}`;
+              timeStrs.push(timestr);
+              if (successfulCount === selectedEvents.length) {
+                let timeStr = timeStrs.join(", ");
+                let strStudent = `${studentName}同学, 您成功预约了${timeStr}的${courseType}课程, 如需变更, 请联系领洋客服进行处理`;
+                let strTutor = `${studentName}成功预约了${timeStr}的${courseType}课程, 目标分: ${res.data.target_score}, 联系方式: ${res.data.contact}`;
+                pushWxMessage(uid, strStudent);
+                sendTutorMsg(strTutor);
+              }
+            }
             submitBtn.setAttribute("style", "display:block");
             loader.setAttribute("style", "display:none");
             selectedSlots = [];
@@ -287,16 +305,26 @@
     })
   }
 
+  function sendTutorMsg(msg) {
+    faunaGetTutors()
+    .then(tutors => {
+      tutors.map(tutor => {
+        pushWxMessage(tutor.data.uid, msg);
+      })
+    })
+  }
+
   async function avoidDoubleBook(selectedEvents) {
     return new Promise(resolve => {
       faunaGetBookedEventsCurrentMonth(startISOstr, endISOstr)
       .then(events => {
         let flag = true;
         events.map(event => {
+          let newEvent = JSON.parse(JSON.stringify(event));
           selectedEvents.map(selectedEvent => {
-            event.data.start = event.data.start.value;
-            event.data.end = event.data.end.value;
-            if (checkTimeOverlap(event.data, selectedEvent)) {
+            newEvent.data.start = event.data.start.value;
+            newEvent.data.end = event.data.end.value;
+            if (checkTimeOverlap(newEvent.data, selectedEvent)) {
               flag = false;
             }
           })
@@ -429,6 +457,8 @@
           queryWxPusher(code).then(res => {
               if (res.code === 1000) {
                   uid = res.data;
+                  let message = "您已成功登录！如果是微信手机页面登录，页面不会自动跳转，请手动退回至上一个界面";
+                  pushWxMessage(uid, message);
                   hideQrCode();
                   clearInterval(query);
               }
@@ -470,7 +500,7 @@
       欢迎使用在线约课管理系统
     </div>
     <img id="wechat-icon" width="50px" style="display:none" src="assets/wechat-icon.png">
-    <button class="btn-normal" id="login-btn-ini" style="margin:20px 0;cursor: pointer;" onclick="createQrCodeHtml()">扫码登陆</button>
+    <button class="btn-normal" id="login-btn-ini" style="margin:20px 0;cursor: pointer;" onclick="createQrCodeHtml()">登陆</button>
     <img id="qr-code" width="250px" src="" onload="qrCodeLoaded()">
     <span id="qr-info" style="display:none;">扫码后等待5秒左右，自动跳转</span>
     <span id="qr-expire" style="display:none;">已过期，请刷新页面重新扫码</span>

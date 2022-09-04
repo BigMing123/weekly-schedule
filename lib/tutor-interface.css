@@ -6,6 +6,25 @@
 
   #calendar .custom-event-single {
     list-style: none;
+    width: 100%;
+    padding: 0;
+  }
+
+  #calendar .custom-event-single li {
+    text-align: center;
+  }
+
+  #calendar .custom-event-single li.course-type {
+    background-color: white;
+    width: 70%;
+    border-radius: 10px;
+    margin: auto;
+    margin-bottom:8px;
+    color: black;
+  }
+
+  #calendar .fc-daygrid-event-harness a {
+    cursor: pointer;
   }
 
   #admin-panel h2 {
@@ -25,8 +44,66 @@
     margin: auto;
   }
 
-  .fc-button.fc-button-primary.fc-button-active {
-    width:100%;
+  #manage-btns, #filter-group {
+    padding: 10px 20px;
+    display: none;
+    flex-direction: column;
+    height: 63vh;
+    width: 96vw !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    align-items: center;
+    z-index: 10;
+    padding-top: 35vh;
+    vertical-align: middle;
+  }
+
+  #filter-group {
+    display: none;
+    padding-top: 20vh;
+    height: 73vh;
+  }
+
+  #filter-group select {
+    width: 50%;
+    margin: 10px auto;
+    margin-bottom: 5vh;
+    color: white;
+    border: 5px solid #2C3E50;
+    background-color: #2C3E50;
+    border-radius: 5px;
+  }
+
+  #filter-btn-confirm {
+    background-color: #e89c0e;
+    height: 6vh;
+    border-radius: 5px;
+    color: white;
+    border-width: 0;
+    margin: 10px;
+    width: 20%;
+  }
+
+  #filter-btn-confirm:hover {
+    cursor: pointer;
+    background-color: #c9880e;
+  }
+
+  #manage-btns button {
+    background-color: #2C3E50;
+    height: 10vh;
+    border-radius: 5px;
+    color: white;
+    border-width: 0;
+    margin: 10px;
+    width: 40%;
+  }
+
+  #manage-btns button:hover {
+    cursor: pointer;
+    background-color: #1e2b37;
   }
 
   /* 控制周视图和月视图的切换 */
@@ -118,4 +195,54 @@
     position: absolute;
     bottom: 45%;
     left: 45%;
+  }
+
+  #calendar a,
+  #calendar li,
+  #calendar h2,
+  #calendar button {
+    font-family: "poppins";
+  }
+
+  .align label {
+    font-family: "poppins";
+    font-size: 4vh;
+  }
+  
+
+  /* hamburger menu */
+
+  .hamburger-menu {
+    margin: 10px;
+    display: flex;
+    flex-flow: column wrap;
+    justify-content: space-between;
+    height: 2.5rem;
+    width: 2.5rem;
+    cursor: pointer;
+  }
+
+  .hamburger-menu .bar-top,
+  .hamburger-menu .bar-middle,
+  .hamburger-menu .bar-bottom {
+    height: 5px;
+    background: #2C3E50;
+    border-radius: 5px;
+    margin: 3px 0;
+    transform-origin: left;
+    transition: all 0.5s;
+    margin-left: 0 !important;
+  }
+
+  .hamburger-menu:hover .bar-top {
+    transform: rotate(45deg);
+  }
+
+  .hamburger-menu:hover .bar-middle {
+    transform:translateX(1rem);
+    opacity: 0;
+  }
+
+  .hamburger-menu:hover .bar-bottom {
+    transform: rotate(-45deg);
   }

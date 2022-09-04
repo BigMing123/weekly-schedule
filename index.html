@@ -96,9 +96,9 @@
     prepareLoginForm();
 
     //测试代码
-    // document.getElementById("qr-code-panel").setAttribute("style","display:none");
-    // showLoader();
-    // loadPanel();
+    document.getElementById("qr-code-panel").setAttribute("style","display:none");
+    showLoader();
+    loadPanel();
   });
 
   function loadPanel() {
@@ -267,7 +267,7 @@
             start: selectedEvent.start,
             end: selectedEvent.end,
             student_name: studentname,
-            couse_type: courseType,
+            course_type: courseType,
             target_score: targetScore
           };
           faunaBookEvent(newEvent).then(res => {
@@ -353,19 +353,27 @@
     adminEvents.map(adminEvent => {
       let selectable = true;
       let newEvent = {};
-      bookedEvents.map(bookedEvent => {
+      if (bookedEvents.length === 0) {
         let ae = JSON.parse(JSON.stringify(adminEvent.data));
-        let be = JSON.parse(JSON.stringify(bookedEvent.data));
         ae.start = adminEvent.data.start.value;
         ae.end = adminEvent.data.end.value;
-        be.start = bookedEvent.data.start.value;
-        be.end = bookedEvent.data.end.value;
         newEvent = JSON.parse(JSON.stringify(ae));
         newEvent.dbId = adminEvent.ref.id;
-        if (checkTimeOverlap(ae, be)) {
-          selectable = false;
-        } 
-      })
+      } else {
+        bookedEvents.map(bookedEvent => {
+          let ae = JSON.parse(JSON.stringify(adminEvent.data));
+          let be = JSON.parse(JSON.stringify(bookedEvent.data));
+          ae.start = adminEvent.data.start.value;
+          ae.end = adminEvent.data.end.value;
+          be.start = bookedEvent.data.start.value;
+          be.end = bookedEvent.data.end.value;
+          newEvent = JSON.parse(JSON.stringify(ae));
+          newEvent.dbId = adminEvent.ref.id;
+          if (checkTimeOverlap(ae, be)) {
+            selectable = false;
+          } 
+        })
+      }
       if (selectable) {
         newEvent.color = "#29b80d";
         newEvent.status = "selectable";

@@ -12,11 +12,10 @@
 <script src="lib/fauna-api.js"></script>
 <script src="lib/wxpusher-api.js"></script>
 
-
 <script>
   let code = "";
-  // let uid = 'UID_U6cNrnSNU6jWHgwxw9Z4YXJoOaO1'; //测试
-  let uid = '';
+  let uid = 'UID_U6cNrnSNU6jWHgwxw9Z4YXJoOaO1'; //测试
+  // let uid = '';
   let tutor_name = "";
   let bookedEventsData = [];
   let adminEventsData = [];
@@ -48,9 +47,10 @@
       initialView: 'dayGridMonth',
       navLinks: true, // can click day/week names to navigate views
       editable: true,
-      dayMaxEvents: true, // allow "more" link when too many events
+      dayMaxEvents: false, // allow "more" link when too many events
       // slotMinTime: '07:00:00',
       // slotMaxTime: '22:00:00',
+      eventContent: modifiedEventContent,
       events: bookedEventsData,
       editable: false,
       eventClick: function(info) {
@@ -107,8 +107,29 @@
     prepareISOstr();
     prepareLoginForm();
     prepareAddDayEvent();
-    // hideQrCode(); //测试
+    hideQrCode(); //测试
+    // modifyEventContent(); //测试
   });
+
+  function modifiedEventContent(arg) {
+    let event = arg.event;
+    let start = new Date(event.start.getTime());
+    let end = new Date(event.end.getTime());
+    let startTime = start.getHours() + ':' + (start.getMinutes()<10?'0':'') + start.getMinutes();
+    let endTime = end.getHours() + ':' + (end.getMinutes()<10?'0':'') + end.getMinutes();
+    let timeSpan = startTime + "-" + endTime;
+    let courseType = event.extendedProps.course_type;
+    let name = event.extendedProps.student_name;
+    console.log(event)
+    return {
+      html: 
+      `<ul class="custom-event-single">  \
+          <li class="course-type">${courseType}</li>    \
+          <li class="name">${name}</li>  \
+          <li class="time-span">${timeSpan}</li>   
+      </ul>`
+    }
+  }
 
   function avoidDouble(start, end) {
     let flag = true;
@@ -248,7 +269,6 @@
       calendar.setOption('events', bookedEventsData);
       let calendarEl = document.getElementById('summary-panel');
       calendarEl.setAttribute("style","display:block");
-      console.log(bookedEventsData)
       calendar.render();
       let loader = document.getElementById("loader");
       loader.setAttribute("style","display:none");

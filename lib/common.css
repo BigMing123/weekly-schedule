@@ -54,7 +54,8 @@
   :root {
     --htmlFontSize: 100%;
   
-    --bodyBackgroundColor: #2c3338;
+    /* --bodyBackgroundColor: #2c3338; */
+    --bodyBackgroundColor: #ffffff;
     --bodyColor: var(--baseColor);
     --bodyFontFamily: "Open Sans";
     --bodyFontFamilyFallback: sans-serif;
@@ -68,11 +69,12 @@
   }
 
   span#qr-info {
-    color: white;
+    color: #290a46;
     margin-top: 5px;
   }
 
   span#qr-expire {
+    color:#290a46;
     margin-top: 5px;
   }
   
@@ -222,6 +224,7 @@
 
   .btn-normal:hover {
     background-color: transparent;
+    color:#1175cc;
   }
   
   .login input[type="submit"]:focus,
@@ -242,8 +245,10 @@
   #login-panel-title {
     margin:10px;
     text-align: center;
-    color: var(--anchorColor);
     font-size: 15px;
+    color: #290a46;
+    font-weight: 800;
+    font-size: 25px;
   }
 
   input.return {

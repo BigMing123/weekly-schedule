@@ -131,6 +131,49 @@
 
   @media only screen and (max-width: 700px) {
     #qr-code-panel {
-      border:2px solid red;
+      font-size: 18px;
+    }
+    #login-panel-title {
+      font-size: 18px;
+    }
+    .fc .fc-toolbar-title {
+      font-size:18px;
+    }
+
+    .fc-button-group {
+      transform:scale(0.8);
+    }
+
+    .fc-today-button.fc-button.fc-button-primary {
+      display: none;
+    }
+
+    .fc-toolbar-chunk {
+      width:30%;
+    }
+
+    .fc-toolbar-chunk:nth-child(2) {
+      width:40%;
+    }
+
+    .fc-timeGridWeek-button.fc-button.fc-button-primary.fc-button-active {
+      transform: scale(0.8);
+    }
+
+    #align {
+      margin:0;
+    }
+
+    #book-panel {
+      left: 0;
+      position: absolute;
+      width: 90vw;
+      margin: 5%;
+    }
+    .form__field {
+      width: 90vw;
+    }
+    .loader {
+      padding: 0;
     }
   }

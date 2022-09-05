@@ -5,46 +5,9 @@
 
 <script>
 
-    // let datestr = "2022-08-31T01:19:00.000Z"
-    // let dateNew = new Date(datestr)
-    // let test = new Date();
-    // let tomorrow = new Date(new Date().getTime() + 86400000)
-    // console.log(test)
-    // console.log(tomorrow)
+    let start = "08:14"
+    let hrMinStart = start.split(":");
     
-</script>
-
-<script type="module">
-    import { h, Component, render } from 'https://unpkg.com/preact?module';
-    import htm from 'https://unpkg.com/htm?module';
-
-    // Initialize htm with Preact
-    const html = htm.bind(h);
-
-    function FunctionalComponent (props) {
-        return html`<h1>Hello ${props.name}!</h1>`;
-    }
-
-    class ClassComponent extends Component {
-        render() {
-            return html`
-                <form>
-                    <input type="text" />
-                    <button type="submit">Update</button>
-                </form>
-            `
-        }
-    }
-
-    class App extends Component {
-        render() {
-            return html`
-                <div>
-                    <h1>Hello, world! <${FunctionalComponent} name="Ming" /> </h1>
-                    <${ClassComponent} />
-                </div>
-            `;
-        }
-    }
-    render(html`<${App} />`, document.body);
+    console.log(start,hrMinStart)
+    
 </script>

@@ -128,3 +128,9 @@
   #submit-form .form__field select {
     inline-size: 260px;
   }
+
+  @media only screen and (max-width: 700px) {
+    #qr-code-panel {
+      border:2px solid red;
+    }
+  }

@@ -279,10 +279,10 @@
               let e = new Date(res.data.end.value).toLocaleString("zh-cn");
               let studentName = res.data.student_name;
               let courseType = res.data.course_type;
-              let timestr = `${s}-${e}`;
+              let timestr = `${s} 至 ${e}`;
               timeStrs.push(timestr);
               if (successfulCount === selectedEvents.length) {
-                let timeStr = timeStrs.join(", ");
+                let timeStr = timeStrs.join(", \n");
                 let strStudent = `${studentName}同学, 您成功预约了${timeStr}的${courseType}课程, 如需变更, 请联系领洋客服进行处理`;
                 let strTutor = `${studentName}成功预约了${timeStr}的${courseType}课程, 
                                 目标分: ${res.data.target_score}, 联系方式: ${res.data.contact}`;

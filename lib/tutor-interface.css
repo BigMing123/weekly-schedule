@@ -8,6 +8,8 @@
     list-style: none;
     width: 100%;
     padding: 0;
+    margin-top: 6px;
+    margin-bottom: 0;
   }
 
   #calendar .custom-event-single li {
@@ -44,7 +46,7 @@
     margin: auto;
   }
 
-  #manage-btns, #filter-group {
+  #manage-btns, #filter-group, #delete-panel {
     padding: 10px 20px;
     display: none;
     flex-direction: column;
@@ -194,7 +196,16 @@
     list-style: none;
     position: absolute;
     bottom: 45%;
-    left: 45%;
+    left: 40%;
+    z-index:15;
+  }
+
+  #admin-messages li {
+    font-size: 20px;
+    background-color: #1186ed;
+    padding: 10px;
+    border-radius: 5px;
+    color: white;
   }
 
   #calendar a,
@@ -207,6 +218,10 @@
   .align label {
     font-family: "poppins";
     font-size: 4vh;
+  }
+
+  #delete-panel {
+    font-family: poppins;
   }
   
 
@@ -245,4 +260,9 @@
 
   .hamburger-menu:hover .bar-bottom {
     transform: rotate(-45deg);
+  }
+
+  /* 禁用管理界面的单活动点击 */
+  #calendar2 .fc-daygrid-event-harness a {
+    pointer-events: none;
   }

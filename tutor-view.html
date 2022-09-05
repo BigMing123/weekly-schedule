@@ -33,8 +33,10 @@
   let studentNameList = [];
   let filterCourseType = "所有课程";
   let filterStudentName = "所有学员";
+  let dbIdToDelete = null;
   const monthStart = new Date(new Date().setMonth(new Date().getMonth()));
   const monthEnd = new Date(new Date().setMonth(new Date().getMonth() + 1));
+  // const monthStartOneDayEarly = new Date(monthStart.getTime() - 186400000); //开头前一天
   const monthEndOneDayExtra = new Date(monthEnd.getTime() + 86400000); //结尾多一天
   document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
@@ -67,22 +69,7 @@
         let courseType = event.course_type;
         let studentName = event.student_name;
         let targetScore = event.target_score;
-        confirmDeleting = confirm(`${start.toLocaleString("zh-cn")}` + 
-                                  ` - ${end.toLocaleString("zh-cn")} \n` +
-                                  `授课内容: ${courseType} \n` +
-                                  `学员名称: ${studentName} \n` +
-                                  `联系方式: ${contact} \n` +
-                                  `目标分数: ${targetScore} \n \n` +
-                                  `是否删除该项目？`);
-        if (confirmDeleting) {
-          doubleConfirm = confirm(`确定删除${studentName}的预约？`);
-          if (doubleConfirm) {
-            faunaDeleteEvent(dbId)
-            .then(res => {
-              loadPanel();
-            });
-          }
-        }
+        deleteEventPanel(start, end, event, dbId, contact, courseType, studentName, targetScore);
       }
     });
 
@@ -179,8 +166,9 @@
   }
 
   function resetDay() {
+    // let copyAE = JSON.parse(JSON.stringify(adminEvents));
     adminEvents = adminEvents.filter(event => {
-      if(new Date(event.start).toDateString() === configCurrentDay.toDateString()) {
+      if(new Date(event.start).toLocaleDateString("zh-cn") === configCurrentDay.toLocaleDateString("zh-cn")) {
         calendar2.getEventById(event.id).remove();
       } else {
         return true;
@@ -452,6 +440,37 @@
     });
   }
 
+  function deleteEventPanel(start, end, event, dbId, contact, courseType, studentName, targetScore) {
+    let deletePanel = document.getElementById("delete-panel");
+    document.getElementById("calendar").setAttribute("style", "opacity:10%");
+    deletePanel.setAttribute("style", "display: flex");
+    let spans = deletePanel.querySelectorAll('span');
+    spans[0].innerHTML = start.toLocaleString("zh-cn");
+    spans[1].innerHTML = end.toLocaleString("zh-cn");
+    spans[2].innerHTML = courseType;
+    spans[3].innerHTML = studentName;
+    spans[4].innerHTML = contact;
+    spans[5].innerHTML = targetScore;
+    dbIdToDelete = dbId;
+    let deleteEventEle = document.getElementById("delete-event-btn");
+  }
+
+  function exitDeletePanel() {
+    let deletePanel = document.getElementById("delete-panel")
+    deletePanel.setAttribute("style", "display: none");
+    document.getElementById("calendar").setAttribute("style", "opacity:100%");
+  }
+
+  function deleteEvent() {
+    faunaDeleteEvent(dbIdToDelete)
+    .then(res => {
+      loadPanel();
+      exitDeletePanel();
+    });
+  }
+
+
+
   function returnBack() {
     if (copyEvents.length !== 0)
       return;
@@ -464,11 +483,6 @@
   }
 
   function setupSubmitBtn() {
-//     let hamburgerd = <div class="hamburger-menu">
-//   <div class="bar-top"></div>
-//   <div class="bar-middle"></div>
-//   <div class="bar-bottom"></div>
-// </div>
     let topEle = document.getElementsByClassName("fc-header-toolbar fc-toolbar fc-toolbar-ltr")[0];
     let submitBtn = document.createElement("button");
     submitBtn.innerHTML = "提交选课";
@@ -568,7 +582,6 @@
     let element = document.getElementById("admin-messages");
     let listItem = document.createElement("li");
     listItem.innerHTML = "管理数据保存成功!";
-    listItem.setAttribute("style", "color:lightgreen !important");
     element.appendChild(listItem);
     setTimeout(() => {
       element.removeChild(listItem);
@@ -673,8 +686,8 @@
     let adminSaveBtn = document.getElementById("admin-save-btn");
     adminSaveBtn.disabled = true;
     faunaAddEvents(JSON.parse(JSON.stringify(adminEvents)), 
-                   adminMonthStart.toISOString(), 
-                   adminMonthEnd.toISOString())
+                   startISOstr, 
+                   endISOstr)
     .then(res => {
       adminSaveBtn.disabled = false;
       appendSuccessInfo();
@@ -721,6 +734,14 @@
     </div>
     <div id="filter-group">
       <button onclick='saveFilter()' class="fc-button fc-button-primary fc-button-active" id="filter-btn-confirm">确认</button>
+    </div>
+    <div id="delete-panel" onclick="exitDeletePanel()">
+      <div><span>placeholder1</span> - <span>placeholder2</span></div>
+      <div><strong>授课内容: </strong><span>placeholder3</span></div>
+      <div><strong>学员名称: </strong><span>placeholder4</span></div>
+      <div><strong>联系方式: </strong><span>placeholder5</span></div>
+      <div><strong>目标分数: </strong><span>placeholder6</span></div>
+      <button onclick="deleteEvent()" class="fc-button fc-button-primary fc-button-active">取消预约</button>
     </div>
   </div>
   <div id="qr-code-panel" style="display:flex; flex-direction: column; align-items: center;">
@@ -821,7 +842,7 @@
         </div>
         <div style="display:flex; flex-direction:row;" class="bottom-level">
           <fieldset>
-            <input onclick="addDay()" type="submit" style="width:80px;cursor:pointer;" id="add-day" value="添加时间">
+            <input type="submit" style="width:80px;cursor:pointer;" id="add-day" value="添加时间">
           </fieldset>
           <fieldset>
             <input onclick="copyDay()" type="button" id="copy-day" style="cursor:pointer;" value="复制">

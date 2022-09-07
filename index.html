@@ -108,10 +108,9 @@
     prepareLoginForm();
 
     //测试代码
-    document.getElementById("qr-code-panel").setAttribute("style","display:none");
-    showLoader();
-    loadPanel();
-    // setCalendarDate("2022-09-09");
+    // document.getElementById("qr-code-panel").setAttribute("style","display:none");
+    // showLoader();
+    // loadPanel();
   });
 
   function setCalendarDate(dateStr) {
@@ -215,6 +214,17 @@
       })
     }
     cBody.before(container);
+  }
+
+  function setupInfo() {
+    let cBody = document.getElementsByClassName("fc-view-harness fc-view-harness-active")[0];
+    let infobox = document.createElement("div");
+    infobox.innerHTML = "可约课";
+    infobox.setAttribute("style","font-family:poppins")
+    let sub = document.createElement("div");
+    sub.setAttribute("style","width:30px;color:rgb(41, 184, 13)")
+    infobox.appendChild(sub);
+    cBody.before(infobox);
   }
 
 
@@ -507,6 +517,7 @@
     if (option === 0) {
       setupSubmitBtn();
       setupMobileWeekNav(getFirstDayOfWeek(new Date()));
+      // setupInfo();
     }
   }
 

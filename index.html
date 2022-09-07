@@ -180,12 +180,16 @@
       startCopy = new Date(startCopy.getTime() + 86400000);
     }
     container.id = "week-nav";
-    let currentDayStr = new Date().toLocaleDateString("zh-cn", {month: "2-digit",day: "2-digit"});
+    let todayStr = new Date().toLocaleDateString("zh-cn", {month: "2-digit",day: "2-digit"});
+    let currentDayStr = calendar.getDate().toLocaleDateString("zh-cn", {month: "2-digit",day: "2-digit"});
     for (let i = 0; i < 7; i++) {
       let a = document.createElement("a");
       a.className = "week-nav-item";
-      if (currentDayStr === data[i][1]) {
+      if (todayStr === data[i][1]) {
         a.classList.add("today");
+      }
+      if (currentDayStr === data[i][1]) {
+        a.classList.add("day-active");
       }
       if (!data[i][2]) {
         a.classList.add("unselectable");

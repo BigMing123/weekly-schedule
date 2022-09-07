@@ -172,7 +172,11 @@
     for (let d = 0; d < 7; d++) {
       let dStr = startCopy.toLocaleDateString("zh-cn", {month: "2-digit",day: "2-digit"});
       data[d].push(dStr);
-      if (startCopy < new Date(new Date().getTime() - 6400000)) {
+      let tDay = new Date();
+      tDay.setHours("0");
+      tDay.setMinutes("0");
+      tDay.setSeconds("0");
+      if (new Date(startCopy.getTime() + 10000) < tDay) {
         data[d].push(false);
       } else {
         data[d].push(true);
@@ -214,6 +218,7 @@
           let dStr = a.childNodes[1].innerHTML.replace("/","-");
           let dateStr = new Date().getFullYear() + "-" + dStr;
           calendar.gotoDate(dateStr);
+          calendar.render();
         }
       })
     }

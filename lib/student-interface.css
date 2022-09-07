@@ -4,7 +4,6 @@
     margin: 0 auto;
   }
 
-
   #week-nav {
     display: flex;
     justify-content: space-between;
@@ -218,5 +217,27 @@
 
     #calendar .fc-toolbar.fc-header-toolbar {
       margin-bottom: 0;
+    }
+
+    #calendar a.fc-col-header-cell-cushion:after {
+      content: "(北京时间; 课时单位为1小时)";
+    } 
+
+    #calendar .fc-scrollgrid-sync-inner {
+      font-weight: 500;
+    }
+  }
+
+  @media only screen and (min-width: 701px) {
+    #calendar h2.fc-toolbar-title:after {
+      content: "(北京时间; 课时单位为1小时)";
+    }
+
+    #calendar .fc-day:not(.fc-day-disabled) .fc-scrollgrid-sync-inner {
+      background-color: #91c2ed;
+    }
+
+    #calendar h2.fc-toolbar-title {
+      font-weight: 400;
     }
   }

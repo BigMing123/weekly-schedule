@@ -84,6 +84,8 @@
       selectMirror: true,
       dayMaxEvents: true, // allow "more" link when too many events
       events: eventsData,
+      dateIncrement: {"days": 7},
+      dayClick: () => {console.log("aaa")},
       select: function(event) {
         let start = event.start;
         let end = event.end;
@@ -106,10 +108,15 @@
     prepareLoginForm();
 
     //测试代码
-    // document.getElementById("qr-code-panel").setAttribute("style","display:none");
-    // showLoader();
-    // loadPanel();
+    document.getElementById("qr-code-panel").setAttribute("style","display:none");
+    showLoader();
+    loadPanel();
+    // setCalendarDate("2022-09-09");
   });
+
+  function setCalendarDate(dateStr) {
+    calendar.gotoDate( dateStr );
+  }
 
   function loadPanel() {
     let linkNode = document.getElementsByTagName('link')[1];
@@ -133,6 +140,17 @@
   }
 
   function setupSubmitBtn() {
+    let prev = document.getElementsByClassName("fc-prev-button")[0];
+    let next = document.getElementsByClassName("fc-next-button")[0];
+    prev.addEventListener("click", () => {
+      removeMobileWeekNav();
+      setupMobileWeekNav(getFirstDayOfWeek(calendar.getDate()));
+    });
+    next.addEventListener("click", () => {
+      removeMobileWeekNav();
+      setupMobileWeekNav(getFirstDayOfWeek(calendar.getDate()));
+    });
+
     let topEle = document.getElementsByClassName("fc-header-toolbar fc-toolbar fc-toolbar-ltr")[0];
     let submitBtn = document.createElement("button");
     submitBtn.innerHTML = "提交选课";
@@ -140,6 +158,66 @@
     topEle.appendChild(submitBtn);
     submitBtn.setAttribute("onclick", "onSubmit()");
   }
+
+  function removeMobileWeekNav() {
+    let c = document.getElementById("week-nav");
+    c.remove();
+  }
+
+  function setupMobileWeekNav(weekStart) {
+    let cBody = document.getElementsByClassName("fc-view-harness fc-view-harness-active")[0];
+    let container = document.createElement("div");
+    let startCopy = new Date(new Date(weekStart));
+    let startStr = startCopy.toLocaleDateString("zh-cn", {month: "2-digit",day: "2-digit"});
+    let data = [["一"], ["二"], ["三"], ["四"], ["五"], ["六"], ["日"]];
+    for (let d = 0; d < 7; d++) {
+      let dStr = startCopy.toLocaleDateString("zh-cn", {month: "2-digit",day: "2-digit"});
+      data[d].push(dStr);
+      if (startCopy < new Date(new Date().getTime() - 6400000)) {
+        data[d].push(false);
+      } else {
+        data[d].push(true);
+      }
+      startCopy = new Date(startCopy.getTime() + 86400000);
+    }
+    container.id = "week-nav";
+    let currentDayStr = new Date().toLocaleDateString("zh-cn", {month: "2-digit",day: "2-digit"});
+    for (let i = 0; i < 7; i++) {
+      let a = document.createElement("a");
+      a.className = "week-nav-item";
+      if (currentDayStr === data[i][1]) {
+        a.classList.add("today");
+      }
+      if (!data[i][2]) {
+        a.classList.add("unselectable");
+      }
+      let dayStr = document.createElement("span"); 
+      dayStr.innerHTML = data[i][0];
+      let dateStr = document.createElement("span");
+      dateStr.innerHTML = data[i][1];
+      a.appendChild(dayStr);
+      a.appendChild(dateStr);
+      container.appendChild(a);
+    }
+    const children = container.childNodes;
+    for (let j = 0; j< children.length; j++) {
+      let a = children[j];
+      a.addEventListener("click", e => {
+        if (data[j][2]) { 
+          for (let k = 0; k < 7; k++) {
+            children[k].classList.remove("day-active");
+          }
+          a.classList.add("day-active");
+          let dStr = a.childNodes[1].innerHTML.replace("/","-");
+          let dateStr = new Date().getFullYear() + "-" + dStr;
+          calendar.gotoDate(dateStr);
+        }
+      })
+    }
+    cBody.before(container);
+  }
+
+
 
   function onSubmit(){
     if (selectedSlots.length === 0) {
@@ -428,7 +506,17 @@
     calendar.render();
     if (option === 0) {
       setupSubmitBtn();
+      setupMobileWeekNav(getFirstDayOfWeek(new Date()));
     }
+  }
+
+  function getFirstDayOfWeek(d) {
+    // 👇️ clone date object, so we don't mutate it
+    const date = new Date(d);
+    const day = date.getDay(); // 👉️ get day of week
+    // 👇️ day of month - day of week (-6 if Sunday), otherwise +1
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(date.setDate(diff));
   }
 
   function createQrCodeHtml() {

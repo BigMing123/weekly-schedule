@@ -96,6 +96,10 @@
     font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
     font-size: 14px;
   } 
+
+  body.tutor-v {
+    background-color: #26212c;
+  } 
   
   /* modules/anchor.css */
   

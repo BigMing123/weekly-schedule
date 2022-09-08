@@ -354,6 +354,8 @@
   function adminPanel() {
     let linkNode = document.getElementsByTagName('link')[1];
     linkNode.disabled = false;
+    let body = document.getElementsByClassName("align")[0];
+    body.classList.add("tutor-v");
     let loader = document.getElementById("loader");
     loader.setAttribute("style", "display:block");
     loadAdminEvents();
@@ -483,6 +485,8 @@
   function returnBack() {
     if (copyEvents.length !== 0)
       return;
+    let body = document.getElementsByClassName("align")[0];
+    body.classList.remove("tutor-v");
     calendar2.removeAllEvents();
     let adminPanel = document.getElementById("admin-panel");
     adminPanel.setAttribute("style", "display:none");

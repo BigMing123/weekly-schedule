@@ -261,6 +261,12 @@
       newEvent.start = newStart.toISOString();
       newEvent.end = newEnd.toISOString();
       newEvent.id = new Date().valueOf() + Math.round(Math.random() * 100);
+      delete newEvent.color;
+      bookedEventsData.map(bookedEvent => {
+        if (checkTimeOverlap(newEvent, bookedEvent)) {
+          newEvent.color = "#29b80d";
+        }
+      })
       calendar2.addEvent(newEvent);
       calendar2.render();
       return newEvent;
@@ -429,6 +435,11 @@
             "start": s.toISOString(),
             "end": e.toISOString()
           };
+          bookedEventsData.map(bookedEvent => {
+            if (checkTimeOverlap(event, bookedEvent)) {
+              event.color = "#29b80d";
+            }
+          })
           s.setHours(s.getHours() + 1);
           // s.setMinutes(e.getMinutes() + 1);    //额外加1分钟
           e = new Date(s.getTime());
@@ -746,7 +757,15 @@
   function adminSave() {
     let adminSaveBtn = document.getElementById("admin-save-btn");
     adminSaveBtn.disabled = true;
-    faunaAddEvents(JSON.parse(JSON.stringify(adminEvents)), 
+    let adminEventsToSave = [];
+    adminEvents.map( event => {
+      let eventToSave = {};
+      eventToSave.start = event.start;
+      eventToSave.end = event.end;
+      eventToSave.id = event.id;
+      adminEventsToSave.push(eventToSave);
+    })
+    faunaAddEvents(JSON.parse(JSON.stringify(adminEventsToSave)), 
                    startISOstr, 
                    endISOstr)
     .then(res => {
@@ -898,13 +917,13 @@
       <form id="config-day" autocomplete="off">
         <div style="display:flex; flex-direction:row;" class="top-level">
           <fieldset style="padding:0 5px">
-            <input id="s-time" type="time" name="s-time" min="07:00" max="22:00" required>
+            <input id="s-time" type="time" name="s-time" min="05:00" max="22:00" required>
           </fieldset>
           <fieldset style="padding:0 0">
             至
           </fieldset>
           <fieldset style="padding:0 5px">
-            <input id="e-time" type="time" name="e-time" min="07:00" max="22:00" required>
+            <input id="e-time" type="time" name="e-time" min="05:00" max="22:00" required>
           </fieldset>
         </div>
         <div style="display:flex; flex-direction:row;" class="bottom-level">

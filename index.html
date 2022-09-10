@@ -345,11 +345,12 @@
       event.preventDefault();
       let targetScore = event.srcElement[0].value;
       let courseType = event.srcElement[1].value;
-      submitBooking(targetScore, courseType);
+      let deliverType = event.srcElement[2].value;
+      submitBooking(targetScore, courseType, deliverType);
     });
   }
 
-  function submitBooking(targetScore, courseType) {
+  function submitBooking(targetScore, courseType, deliverType) {
     let contactWay = contact;
     let loader = document.getElementById("loader-2");
     let submitBtn = document.getElementById("save-btn");
@@ -375,7 +376,9 @@
             start: selectedEvent.start,
             end: selectedEvent.end,
             student_name: studentname,
+            student_uid: uid,
             course_type: courseType,
+            deliver_type: deliverType,
             target_score: targetScore
           };
           faunaBookEvent(newEvent).then(res => {
@@ -385,12 +388,13 @@
               let e = new Date(res.data.end.value).toLocaleString("zh-cn");
               let studentName = res.data.student_name;
               let courseType = res.data.course_type;
+              let deliverType = res.data.deliver_type;
               let timestr = `${s} 至 ${e}`;
               timeStrs.push(timestr);
               if (successfulCount === selectedEvents.length) {
                 let timeStr = timeStrs.join(", \n");
-                let strStudent = `${studentName}同学, 您成功预约了${timeStr}的${courseType}课程, 如需变更, 请联系领洋客服进行处理`;
-                let strTutor = `${studentName}成功预约了${timeStr}的${courseType}课程, 
+                let strStudent = `【预约成功通知】${studentName}同学, 您成功预约了${timeStr}的${courseType}课程, 授课形式:${deliverType}, 如需变更, 请联系领洋客服进行处理`;
+                let strTutor = `${studentName}成功预约了${timeStr}的${courseType}课程, 授课形式:${deliverType}, 
                                 目标分: ${res.data.target_score}, 联系方式: ${res.data.contact}`;
                 pushWxMessage(uid, strStudent, "https://lingyang-au-pte.com");
                 sendTutorMsg(strTutor);
@@ -645,7 +649,7 @@
 
       <div class="form__field">
         <label for="login__targetscore"><span>目标分数</span></label>
-        <input id="login__targetscore" type="text" name="targetscore" class="form__input" placeholder="输入目标分" maxlength="5" required>
+        <input id="login__targetscore" type="text" name="targetscore" class="form__input" placeholder="输入目标分" maxlength="20" required>
       </div>
 
       <div class="form__field">
@@ -686,7 +690,7 @@
     <form class="form login" id="submit-form">
       <div class="form__field">
         <label for="targetscore"><span>目标分数</span></label>
-        <input id="targetscore" type="text" name="targetscore" placeholder="请填写目标分数" maxlength="5" required>
+        <input id="targetscore" type="text" name="targetscore" placeholder="请填写目标分数" maxlength="20" required>
       </div>
       <div class="form__field">
         <label for="course-type"><span>预约类型</span></label>
@@ -697,6 +701,13 @@
           <option value="听力">听力</option>
           <option value="阅读">阅读</option>
           <option value="写作">写作</option>
+        </select>
+      </div>
+      <div class="form__field">
+        <label for="deliver-type"><span>授课形式</span></label>
+        <select id="deliver-type" name="deliver-type" required>
+          <option value="Zoom">Zoom</option>
+          <option value="腾讯会议">腾讯会议</option>
         </select>
       </div>
 

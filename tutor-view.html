@@ -130,12 +130,14 @@
     let endTime = end.getHours() + ':' + (end.getMinutes()<10?'0':'') + end.getMinutes();
     let timeSpan = startTime + "-" + endTime;
     let courseType = event.extendedProps.course_type;
+    let deliverType = event.extendedProps.deliver_type ? event.extendedProps.deliver_type : "【授课形式】";
     let name = event.extendedProps.student_name;
     return {
       html: 
       `<ul class="custom-event-single">  \
           <li class="course-type">${courseType}</li>    \
           <li class="name">${name}</li>  \
+          <li class="deliver-type">${deliverType}</li> \
           <li class="time-span">${timeSpan}</li>   
       </ul>`
     }
@@ -475,6 +477,14 @@
   function deleteEvent() {
     faunaDeleteEvent(dbIdToDelete)
     .then(res => {
+      let s = new Date(res.data.start.value).toLocaleString("zh-cn");
+      let e = new Date(res.data.end.value).toLocaleString("zh-cn");
+      let studentUid = res.data.student_uid;
+      let studentName = res.data.student_name;
+      let courseType = res.data.course_type;
+      let timeStr = `${s} 至 ${e}`;
+      let strStudent = `【预约取消通知】${studentName}同学, 您预约${timeStr}的${courseType}课程已取消！如该操作有误，请尽快联系领洋客服处理`;
+      pushWxMessage(studentUid, strStudent, "https://lingyang-au-pte.com");
       loadPanel();
       exitDeletePanel();
     });

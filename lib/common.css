@@ -98,7 +98,7 @@
   } 
 
   body.tutor-v {
-    background-color: #26212c;
+    background-color: #383c3c;
   } 
   
   /* modules/anchor.css */
@@ -278,6 +278,7 @@
 
   #calendar2 .fc-button.fc-button-primary {
     background-color: var(--loginSubmitBackgroundColor);
+    border-color: var(--loginSubmitBackgroundColor);
   }
   
 

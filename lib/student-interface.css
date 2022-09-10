@@ -153,12 +153,16 @@
     inline-size: 200px;
   }
 
-  #submit-form .form__field label[for="course-type"] {
+  #submit-form .form__field label[for="course-type"],
+  #submit-form .form__field label[for="deliver-type"] {
     inline-size: 140px;
   }
 
   #submit-form .form__field select {
     inline-size: 260px;
+    background-color: #3b4148;
+    border-color: #3b4148;
+    color: white;
   }
 
   @media only screen and (max-width: 700px) {

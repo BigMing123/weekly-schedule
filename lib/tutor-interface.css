@@ -143,7 +143,22 @@
     border-radius: 5px;
   }
 
-  #config-day fieldset {
+  #config-day-1 {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    align-items: center;
+    top: 25%;
+    left: 35%;
+    background-color: #2C3E50;
+    padding: 15px 10px;
+    z-index: 10;
+    display: none;
+    border-radius: 5px;
+  }
+
+  #config-day fieldset,
+  #config-day-1 fieldset {
     border: none;
     color: white;
     padding: 0 5px;
@@ -265,4 +280,53 @@
   /* 禁用管理界面的单活动点击 */
   #calendar2 .fc-daygrid-event-harness a {
     pointer-events: none;
+  }
+
+  #book-panel .form {
+    display: grid;
+    gap: var(--formGap);
+  }
+  
+  #book-panel .form input[type="password"],
+  #book-panel .form input[type="text"],
+  #book-panel .form input[type="submit"],
+  #book-panel .form input[type="tel"] {
+    inline-size: 100%;
+  }
+  
+  #book-panel .form__field {
+    display: flex;
+    margin: 5px 0;
+  }
+  
+  #book-panel .form__input {
+    flex: 1;
+  }
+
+  #book-panel label {
+    font-size: 2vh;
+    width: 150px;
+  }
+
+  #book-panel select {
+    width: 100%;
+  }
+
+  #book-panel input {
+    border: none;
+    border-radius: 3px;
+  }
+
+  #book-panel input[type="button"],
+  #book-panel input[type="submit"]  {
+    padding: 5px 20px;
+    border-radius: 3px;
+    border:none;
+  }
+
+  #book-panel {
+    left: 0;
+    margin: 5%;
+    color:white;
+    font-family: poppins;
   }

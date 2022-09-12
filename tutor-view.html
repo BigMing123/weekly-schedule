@@ -44,6 +44,7 @@
   let filterStudentName = "所有学员";
   let dbIdToDelete = null;
   let adminEventsLen = 0;
+  let currentPanel = "panel1";
   const monthStart = new Date(new Date().setMonth(new Date().getMonth()));
   const monthEnd = new Date(new Date().setMonth(new Date().getMonth() + 1));
   // const monthStartOneDayEarly = new Date(monthStart.getTime() - 186400000); //开头前一天
@@ -81,7 +82,12 @@
         let targetScore = event.target_score;
         let deliverType = event.deliver_type;
         deleteEventPanel(start, end, event, dbId, contact, courseType, studentName, targetScore, deliverType);
-      }
+      },
+      selectable: true,
+      select: function(info) {
+        configCurrentDay = info.start;
+          showConfigDayWindowPanelOne(1);
+      },
     });
 
     var calendarEl2 = document.getElementById('calendar2');
@@ -96,7 +102,6 @@
       displayEventEnd: true,
       eventDisplay: 'block',
       navLinks: true, // can click day/week names to navigate views
-      editable: true,
       // dayMaxEvents: true, // allow "more" link when too many events
       eventContent: modifiedAdminEventContent,
       events: adminEventsData,
@@ -123,6 +128,7 @@
     prepareISOstr();
     prepareLoginForm();
     prepareAddDayEvent();
+    prepareAddStudentCourseEvent();
     // hideQrCode(); //测试
   });
 
@@ -204,6 +210,22 @@
       let s = event.srcElement[1].value;
       let e = event.srcElement[4].value;
       addDay(s, e);
+    });
+  }
+
+  function prepareAddStudentCourseEvent() {
+    let addStudentCourse = document.getElementById('add-student-course');
+    addStudentCourse.addEventListener("submit", (event) => {
+      console.log("add student day")
+      event.preventDefault();
+      let start = event.srcElement[1].value;
+      let name = event.srcElement[3].value;
+      let contact = event.srcElement[4].value;
+      let targetScore = event.srcElement[5].value;
+      let courseType = event.srcElement[6].value;
+      let deliverType = event.srcElement[7].value;
+      document.getElementById('add-student-course-btn').disabled = true;
+      addStudentEvent(start, name, contact, targetScore, courseType, deliverType);
     });
   }
 
@@ -290,6 +312,30 @@
       let configDay = document.getElementById("config-day");
       configDay.setAttribute("style","display:none");
     }
+  }
+
+  function showConfigDayWindowPanelOne(option) {
+    displayAddStudentEventPanel();
+    if (option === 1) {
+      let calendarEle = document.getElementById('calendar');
+      calendarEle.setAttribute("style","opacity:20%;pointer-events:none;");
+      let configDay = document.getElementById("config-day-1");
+      configDay.setAttribute("style","display:flex");
+      let addStudentDay = document.getElementById("add-student-course");
+      addStudentDay.setAttribute("style","display:grid");
+    } else if (option === 0) {
+      let calendarEle = document.getElementById('calendar');
+      calendarEle.setAttribute("style","opacity:100%;pointer-events:auto;");
+      let configDay = document.getElementById("config-day-1");
+      configDay.setAttribute("style","display:none");
+      let addStudentDay = document.getElementById("add-student-course");
+      addStudentDay.setAttribute("style","display:none");
+    }
+  }
+
+  function displayAddStudentEventPanel() {
+    let bookPanel = document.getElementById("book-panel");
+    bookPanel.setAttribute("style", "display: block");
   }
 
   function prepareISOstr() {
@@ -450,6 +496,54 @@
       }
     }
     calendar2.render();
+  }
+
+  function addStudentEvent(start, name, contact, targetScore, courseType, deliverType) {
+    let id = new Date().valueOf() + Math.round(Math.random() * 100);
+    let hrStart = start.split(":");
+    let startTime = new Date(configCurrentDay);
+    startTime.setHours(hrStart[0]);
+    startTime.setMinutes(hrStart[1]);
+    startTime.setSeconds("0");
+    let endTime = new Date(startTime);
+    endTime = new Date(endTime.setHours(endTime.getHours() + 1));
+    let event = {
+      "id": id,
+      "student_name": name,
+      "contact": contact,
+      "target_score": targetScore,
+      "course_type": courseType,
+      "deliver_type": deliverType,
+      "start": new Date(startTime).toISOString(),
+      "end": new Date(endTime).toISOString()
+    };
+    finishAddStudentEvent(event);
+  }
+
+  function finishAddStudentEvent(event) {
+    faunaBookEvent(event).then(res => {
+      let s = new Date(res.data.start.value).toLocaleString("zh-cn");
+      let e = new Date(res.data.end.value).toLocaleString("zh-cn");
+      let studentName = res.data.student_name;
+      let courseType = res.data.course_type;
+      let deliverType = res.data.deliver_type;
+      let timeStr = `${s} 至 ${e}`;
+      let strTutor = `${studentName}成功预约了${timeStr}的${courseType}课程, 授课形式:${deliverType}, 
+                      目标分: ${res.data.target_score}, 联系方式: ${res.data.contact}`;
+      sendTutorMsg(strTutor);
+      document.getElementById('add-student-course-btn').disabled = false;
+      loadPanel();
+      showConfigDayWindowPanelOne(0);
+    })
+  }
+
+  function sendTutorMsg(msg) {
+    faunaGetTutors()
+    .then(tutors => {
+      tutors.map(tutor => {
+        pushWxMessage(tutor.data.uid, msg, "https://lingyang-au-pte.com/tutor-view.html");
+      })
+    })
   }
 
   function saveConfig() {
@@ -815,6 +909,64 @@
 <body class="align">
   <div id="summary-panel" style="display:none">
     <div id='calendar'></div>
+    <div id="config-day-1">
+      <div class="grid" id="book-panel" style="display: none;">
+        <div style="text-align: center;">
+          手动添加课程信息
+        </div>
+        <ul id="course-profile"></ul>
+        <form class="form login" id="add-student-course">
+          <div class="form__field">
+            <div style="display:flex; flex-direction:row; margin:auto;" class="top-level">
+              <fieldset style="padding:0 5px">
+                <input id="s-time" type="time" min="05:00" max="22:00" required>
+              </fieldset>
+              <fieldset style="padding:0 0">
+                - 1小时
+              </fieldset>
+            </div>
+          </div>
+          <div class="form__field">
+            <label for="studentname"><span>学员姓名</span></label>
+            <input id="studentname" type="text" placeholder="请填写姓名" maxlength="20" required>
+          </div>
+          <div class="form__field">
+            <label for="contact"><span>联系方式</span></label>
+            <input id="contact" type="text" placeholder="请填写联系方式" maxlength="20" required>
+          </div>
+          <div class="form__field">
+            <label for="targetscore"><span>目标分数</span></label>
+            <input id="targetscore" type="text" placeholder="请填写目标分数" maxlength="20" required>
+          </div>
+          <div class="form__field">
+            <label for="course-type"><span>预约类型</span></label>
+            <select id="course-type" required>
+              <option value="">请选择预约类型</option>
+              <option value="mock分析">mock分析</option>
+              <option value="口语">口语</option>
+              <option value="听力">听力</option>
+              <option value="阅读">阅读</option>
+              <option value="写作">写作</option>
+            </select>
+          </div>
+          <div class="form__field">
+            <label for="deliver-type"><span>授课形式</span></label>
+            <select id="deliver-type" required>
+              <option value="Zoom">Zoom</option>
+              <option value="腾讯会议">腾讯会议</option>
+            </select>
+          </div>
+          <div style="margin-top: 10px;">
+            <div class="form__field" style="float:right;">
+              <input type="submit" id="add-student-course-btn" value="提交" />
+            </div>
+            <div class="form__field" style="float:left; width:45%;">
+              <input type="button" class="return" id="exit-btn" onclick="showConfigDayWindowPanelOne(0)" value="返回" />
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
     <div id="manage-btns" onclick="exitHamburgerMenu()">
       <button onclick='adminPanel()' class="fc-button fc-button-primary fc-button-active" id="manage-btn">进入课时管理界面</button>
       <button onclick='filter()' class="fc-button fc-button-primary fc-button-active" id="filter-btn">过滤器</button>
@@ -945,5 +1097,6 @@
       </form>
     </div>
   </div>
+
 </body>
 </html>

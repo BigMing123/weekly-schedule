@@ -23,8 +23,8 @@
 
 <script>
   let code = "";
-  // let uid = 'UID_U6cNrnSNU6jWHgwxw9Z4YXJoOaO1'; //测试
-  let uid = '';
+  let uid = 'UID_U6cNrnSNU6jWHgwxw9Z4YXJoOaO1'; //测试
+  // let uid = '';
   let tutor_name = "";
   let bookedEventsData = [];
   let adminEventsData = [];
@@ -43,7 +43,6 @@
   let filterCourseType = "所有课程";
   let filterStudentName = "所有学员";
   let dbIdToDelete = null;
-  let adminEventsLen = 0;
   const monthStart = new Date(new Date().setMonth(new Date().getMonth()));
   const monthEnd = new Date(new Date().setMonth(new Date().getMonth() + 1));
   // const monthStartOneDayEarly = new Date(monthStart.getTime() - 186400000); //开头前一天
@@ -79,8 +78,7 @@
         let courseType = event.course_type;
         let studentName = event.student_name;
         let targetScore = event.target_score;
-        let deliverType = event.deliver_type;
-        deleteEventPanel(start, end, event, dbId, contact, courseType, studentName, targetScore, deliverType);
+        deleteEventPanel(start, end, event, dbId, contact, courseType, studentName, targetScore);
       }
     });
 
@@ -94,11 +92,11 @@
       locale: zhCn,
       initialDate: new Date(),
       displayEventEnd: true,
-      eventDisplay: 'block',
       navLinks: true, // can click day/week names to navigate views
       editable: true,
+      eventDisplay: 'block',
+      // eventContent: modifiedAdminEventContent,
       // dayMaxEvents: true, // allow "more" link when too many events
-      eventContent: modifiedAdminEventContent,
       events: adminEventsData,
       editable: false,
       eventClick: function(info) {
@@ -123,7 +121,7 @@
     prepareISOstr();
     prepareLoginForm();
     prepareAddDayEvent();
-    // hideQrCode(); //测试
+    hideQrCode(); //测试
   });
 
   function modifiedEventContent(arg) {
@@ -149,36 +147,23 @@
 
   function modifiedAdminEventContent(arg) {
     let event = arg.event;
-    let start = new Date(event.start.getTime());
-    let end = new Date(event.end.getTime());
+    let start = new Date(event.start);
+    let end = new Date(event.end);
     let startTime = start.getHours() + ':' + (start.getMinutes()<10?'0':'') + start.getMinutes();
     let endTime = end.getHours() + ':' + (end.getMinutes()<10?'0':'') + end.getMinutes();
     let timeSpan = startTime + "-" + endTime;
     let bookedStr = '';
+    let bookClass = '';
     bookedEventsData.map(bookedEvent => {
       if (checkTimeOverlap(event, bookedEvent)) {
         bookedStr = ' 已预约';
+        bookClass = "span-event-booked";
       }
     })
     return {
       html: 
-      `<span>${timeSpan}</span>${bookedStr}`
+      `<span id="${bookClass}">${timeSpan}</span>${bookedStr}`
     }
-  }
-
-  function checkTimeOverlap(event, selectedEvent) {
-    let timeOverlap = false;
-    let s = new Date(event.start);
-    let e = new Date(event.end);
-    let start = new Date(selectedEvent.start); 
-    let end = new Date(selectedEvent.end);
-    if (start < e && start >= s) {
-      timeOverlap = true;
-    }
-    if (end <= e && end > s) {
-      timeOverlap = true;
-    }
-    return timeOverlap;
   }
 
   function avoidDouble(start, end) {
@@ -262,12 +247,6 @@
       newEvent.start = newStart.toISOString();
       newEvent.end = newEnd.toISOString();
       newEvent.id = new Date().valueOf() + Math.round(Math.random() * 100);
-      delete newEvent.color;
-      bookedEventsData.map(bookedEvent => {
-        if (checkTimeOverlap(newEvent, bookedEvent)) {
-          newEvent.color = "#29b80d";
-        }
-      })
       calendar2.addEvent(newEvent);
       calendar2.render();
       return newEvent;
@@ -436,11 +415,6 @@
             "start": s.toISOString(),
             "end": e.toISOString()
           };
-          bookedEventsData.map(bookedEvent => {
-            if (checkTimeOverlap(event, bookedEvent)) {
-              event.color = "#29b80d";
-            }
-          })
           s.setHours(s.getHours() + 1);
           // s.setMinutes(e.getMinutes() + 1);    //额外加1分钟
           e = new Date(s.getTime());
@@ -502,7 +476,7 @@
     });
   }
 
-  function deleteEventPanel(start, end, event, dbId, contact, courseType, studentName, targetScore, deliverType) {
+  function deleteEventPanel(start, end, event, dbId, contact, courseType, studentName, targetScore) {
     let deletePanel = document.getElementById("delete-panel");
     document.getElementById("calendar").setAttribute("style", "opacity:10%");
     deletePanel.setAttribute("style", "display: flex");
@@ -510,10 +484,9 @@
     spans[0].innerHTML = start.toLocaleString("zh-cn");
     spans[1].innerHTML = end.toLocaleString("zh-cn");
     spans[2].innerHTML = courseType;
-    spans[3].innerHTML = deliverType;
-    spans[4].innerHTML = studentName;
-    spans[5].innerHTML = contact;
-    spans[6].innerHTML = targetScore;
+    spans[3].innerHTML = studentName;
+    spans[4].innerHTML = contact;
+    spans[5].innerHTML = targetScore;
     dbIdToDelete = dbId;
     let deleteEventEle = document.getElementById("delete-event-btn");
   }
@@ -758,16 +731,7 @@
   function adminSave() {
     let adminSaveBtn = document.getElementById("admin-save-btn");
     adminSaveBtn.disabled = true;
-    let adminEventsToSave = [];
-    adminEvents.map( event => {
-      let eventToSave = {};
-      eventToSave.start = event.start;
-      eventToSave.end = event.end;
-      eventToSave.id = event.id;
-      adminEventsToSave.push(eventToSave);
-    })
-    faunaAddEvents(JSON.parse(JSON.stringify(adminEventsToSave)), 
-                   adminEventsLen,
+    faunaAddEvents(JSON.parse(JSON.stringify(adminEvents)), 
                    startISOstr, 
                    endISOstr)
     .then(res => {
@@ -795,19 +759,29 @@
         let newEvent = event.data;
         newEvent.start = newEvent.start.value;
         newEvent.end = newEvent.end.value;
-        bookedEventsData.map(bookedEvent => {
-          if (checkTimeOverlap(newEvent, bookedEvent)) {
-            newEvent.color = "#29b80d";
-          }
-        })
         adminEvents.push(newEvent);
       })
-      adminEventsLen = adminEvents.length;
       calendar2.setOption('events', adminEvents);
       calendar2.render();
       if (!saveBtnAdded) 
         setupSaveBtn();
     })
+  }
+
+  function checkTimeOverlap(event, selectedEvent) {
+    let timeOverlap = false;
+    let s = new Date(event.start);
+    let e = new Date(event.end);
+    let start = new Date(selectedEvent.start); 
+    let end = new Date(selectedEvent.end);
+    // console.log(s, e, start, end)
+    if (start < e && start >= s) {
+      timeOverlap = true;
+    }
+    if (end <= e && end > s) {
+      timeOverlap = true;
+    }
+    return timeOverlap;
   }
 </script>
 </head>
@@ -825,10 +799,9 @@
     <div id="delete-panel" onclick="exitDeletePanel()">
       <div><span>placeholder1</span> - <span>placeholder2</span></div>
       <div><strong>授课内容: </strong><span>placeholder3</span></div>
-      <div><strong>授课形式: </strong><span>placeholder4</span></div>
-      <div><strong>学员名称: </strong><span>placeholder5</span></div>
-      <div><strong>联系方式: </strong><span>placeholder6</span></div>
-      <div><strong>目标分数: </strong><span>placeholder7</span></div>
+      <div><strong>学员名称: </strong><span>placeholder4</span></div>
+      <div><strong>联系方式: </strong><span>placeholder5</span></div>
+      <div><strong>目标分数: </strong><span>placeholder6</span></div>
       <button onclick="deleteEvent()" class="fc-button fc-button-primary fc-button-active">取消预约</button>
     </div>
   </div>
@@ -919,13 +892,13 @@
       <form id="config-day" autocomplete="off">
         <div style="display:flex; flex-direction:row;" class="top-level">
           <fieldset style="padding:0 5px">
-            <input id="s-time" type="time" name="s-time" min="05:00" max="22:00" required>
+            <input id="s-time" type="time" name="s-time" min="05:00" max="21:00" required>
           </fieldset>
           <fieldset style="padding:0 0">
             至
           </fieldset>
           <fieldset style="padding:0 5px">
-            <input id="e-time" type="time" name="e-time" min="05:00" max="22:00" required>
+            <input id="e-time" type="time" name="e-time" min="05:00" max="21:00" required>
           </fieldset>
         </div>
         <div style="display:flex; flex-direction:row;" class="bottom-level">

@@ -12,6 +12,10 @@
 <script src="https://cdn.jsdelivr.net/npm/faunadb@latest/dist/faunadb.js"></script>
 <script src="lib/fauna-api.js"></script>
 <script src="lib/wxpusher-api.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="lib/moment.min.js"></script>
+<script src="lib/moment-timezone-with-data.min.js"></script>
+<script src="lib/moment-api.js"></script>
 
 <script>
   window.mobilecheck = function() {
@@ -34,8 +38,10 @@
   let calendar2 = null;
   let saveBtnAdded = false;
   let adminEvents = [];
+  let adminChinaEvents = [];
   let configCurrentDay = null;
   let copyEvents = [];
+  let copyChinaEvents = [];
   let startISOstr = null;
   let endISOstr = null;
   let courseTypeList = [];
@@ -43,6 +49,9 @@
   let filterCourseType = "所有课程";
   let filterStudentName = "所有学员";
   let dbIdToDelete = null;
+  let adminEventsLen = 0;
+  let adminChinaEventsLen = 0;
+  let currentPanel = "panel1";
   const monthStart = new Date(new Date().setMonth(new Date().getMonth()));
   const monthEnd = new Date(new Date().setMonth(new Date().getMonth() + 1));
   // const monthStartOneDayEarly = new Date(monthStart.getTime() - 186400000); //开头前一天
@@ -57,6 +66,7 @@
         right: 'dayGridMonth'
       },
       locale: zhCn,
+      timeZone: "Asia/Shanghai",
       displayEventEnd: true,
       initialDate: new Date(),
       initialView: 'dayGridMonth',
@@ -78,8 +88,14 @@
         let courseType = event.course_type;
         let studentName = event.student_name;
         let targetScore = event.target_score;
-        deleteEventPanel(start, end, event, dbId, contact, courseType, studentName, targetScore);
-      }
+        let deliverType = event.deliver_type;
+        deleteEventPanel(start, end, event, dbId, contact, courseType, studentName, targetScore, deliverType);
+      },
+      selectable: true,
+      select: function(info) {
+        configCurrentDay = info.start;
+        showConfigDayWindowPanelOne(1);
+      },
     });
 
     var calendarEl2 = document.getElementById('calendar2');
@@ -90,18 +106,20 @@
         right: 'dayGridMonth'
       },
       locale: zhCn,
+      timeZone: "Asia/Shanghai",
       initialDate: new Date(),
       displayEventEnd: true,
-      navLinks: true, // can click day/week names to navigate views
-      editable: true,
       eventDisplay: 'block',
-      // eventContent: modifiedAdminEventContent,
+      navLinks: true, // can click day/week names to navigate views
       // dayMaxEvents: true, // allow "more" link when too many events
+      eventContent: modifiedAdminEventContent,
       events: adminEventsData,
-      editable: false,
+      editable: true,
+      eventStartEditable: false,
       eventClick: function(info) {
         let start = info.event._instance.range.start;
         let end = info.event._instance.range.end;
+        removeSingleAdminEvent(start, end);
       },
       validRange: {
         start: monthStart,
@@ -110,6 +128,8 @@
       selectable: true,
       select: function(info) {
         configCurrentDay = info.start;
+        //设置成一个初始值
+        configCurrentDay.setHours("10");
         if (copyEvents.length !== 0) {
           finishCopyDay();
         } else {
@@ -121,6 +141,7 @@
     prepareISOstr();
     prepareLoginForm();
     prepareAddDayEvent();
+    prepareAddStudentCourseEvent();
     hideQrCode(); //测试
   });
 
@@ -145,25 +166,52 @@
     }
   }
 
+  function isoStrToChinaLocaleTime(ISOstr) {
+    let china_datetime_str = new Date(ISOstr).toLocaleString("zh-cn", {timeZone: "Asia/Shanghai"});
+    return china_datetime_str;
+  }
+
+  function localeStrToHrMin(localeStr) {
+    let text = / (\d+:\d+):\d+/;
+    let match = text.exec(localeStr)[1];
+    return match;
+  }
+
   function modifiedAdminEventContent(arg) {
     let event = arg.event;
-    let start = new Date(event.start);
-    let end = new Date(event.end);
+    let start = new Date(event.start.getTime());
+    let end = new Date(event.end.getTime());
     let startTime = start.getHours() + ':' + (start.getMinutes()<10?'0':'') + start.getMinutes();
     let endTime = end.getHours() + ':' + (end.getMinutes()<10?'0':'') + end.getMinutes();
+
+    startTime = localeStrToHrMin(isoStrToChinaLocaleTime(event.start));
+    endTime = localeStrToHrMin(isoStrToChinaLocaleTime(event.end));
     let timeSpan = startTime + "-" + endTime;
     let bookedStr = '';
-    let bookClass = '';
     bookedEventsData.map(bookedEvent => {
       if (checkTimeOverlap(event, bookedEvent)) {
         bookedStr = ' 已预约';
-        bookClass = "span-event-booked";
       }
     })
     return {
       html: 
-      `<span id="${bookClass}">${timeSpan}</span>${bookedStr}`
+      `<span>${timeSpan}</span>${bookedStr}`
     }
+  }
+
+  function checkTimeOverlap(event, selectedEvent) {
+    let timeOverlap = false;
+    let s = new Date(event.start);
+    let e = new Date(event.end);
+    let start = new Date(selectedEvent.start); 
+    let end = new Date(selectedEvent.end);
+    if (start < e && start >= s) {
+      timeOverlap = true;
+    }
+    if (end <= e && end > s) {
+      timeOverlap = true;
+    }
+    return timeOverlap;
   }
 
   function avoidDouble(start, end) {
@@ -192,6 +240,22 @@
     });
   }
 
+  function prepareAddStudentCourseEvent() {
+    let addStudentCourse = document.getElementById('add-student-course');
+    addStudentCourse.addEventListener("submit", (event) => {
+      console.log("add student day")
+      event.preventDefault();
+      let start = event.srcElement[1].value;
+      let name = event.srcElement[3].value;
+      let contact = event.srcElement[4].value;
+      let targetScore = event.srcElement[5].value;
+      let courseType = event.srcElement[6].value;
+      let deliverType = event.srcElement[7].value;
+      document.getElementById('add-student-course-btn').disabled = true;
+      addStudentEvent(start, name, contact, targetScore, courseType, deliverType);
+    });
+  }
+
   function addDay(s, e) {
     let startTime = document.getElementById('s-time').value;
     let endTime = document.getElementById('e-time').value;
@@ -211,8 +275,16 @@
     showConfigDayWindow(0);
   }
 
+  function removeSingleAdminEvent(s, e) {
+    console.log(s, e)
+  }
+
   function copyDay() {
     copyEvents = adminEvents.filter(event => {
+      if(new Date(event.start).toDateString() === configCurrentDay.toDateString())
+        return true;
+    });
+    copyChinaEvents = adminChinaEvents.filter(event => {
       if(new Date(event.start).toDateString() === configCurrentDay.toDateString())
         return true;
     });
@@ -227,6 +299,7 @@
     resetDay(); 
     copyEvents = copyEvents.map(event => {
       let newEvent = JSON.parse(JSON.stringify(event));
+      let newEventC = JSON.parse(JSON.stringify(event));
       let start = new Date(newEvent.start);
       let end = new Date(newEvent.end);
       let startHours = start.getHours();
@@ -236,25 +309,33 @@
       let endMinutes = end.getMinutes();   
       let endSeconds = end.getSeconds();
 
-      let newStart = new Date(configCurrentDay.getTime());
-      let newEnd = new Date(configCurrentDay.getTime());
-      newStart.setHours(startHours);
-      newStart.setMinutes(startMinutes);
-      newStart.setSeconds(startSeconds);
-      newEnd.setHours(endHours);
-      newEnd.setMinutes(endMinutes);
-      newEnd.setSeconds(endSeconds);
+      let [newStart, newEnd, newStartChina, newEndChina] = 
+      setUpTimeConfigDay(configCurrentDay, startHours, startMinutes, startSeconds, endHours, endMinutes, endSeconds);
+    
       newEvent.start = newStart.toISOString();
       newEvent.end = newEnd.toISOString();
       newEvent.id = new Date().valueOf() + Math.round(Math.random() * 100);
-      calendar2.addEvent(newEvent);
+      newEventC.start = newStartChina.toISOString();
+      newEventC.end = newEndChina.toISOString();
+      newEventC.id = new Date().valueOf() + Math.round(Math.random() * 100);
+      delete newEvent.color;
+      bookedEventsData.map(bookedEvent => {
+        if (checkTimeOverlap(newEvent, bookedEvent)) {
+          newEvent.color = "#29b80d";
+        }
+      })
+      calendar2.addEvent(newEventC);
       calendar2.render();
+      copyChinaEvents.push(newEventC);
       return newEvent;
     })
     adminEvents =  adminEvents.concat(copyEvents);
+    adminChinaEvents = adminChinaEvents.concat(copyChinaEvents);
     copyEvents = [];
+    copyChinaEvents = [];
     var element = document.getElementById("calendar2");
     element.classList.remove("active");
+    console.log(adminChinaEvents)
   }
 
   function showConfigDayWindow(option) {
@@ -269,6 +350,30 @@
       let configDay = document.getElementById("config-day");
       configDay.setAttribute("style","display:none");
     }
+  }
+
+  function showConfigDayWindowPanelOne(option) {
+    displayAddStudentEventPanel();
+    if (option === 1) {
+      let calendarEle = document.getElementById('calendar');
+      calendarEle.setAttribute("style","opacity:20%;pointer-events:none;");
+      let configDay = document.getElementById("config-day-1");
+      configDay.setAttribute("style","display:flex");
+      let addStudentDay = document.getElementById("add-student-course");
+      addStudentDay.setAttribute("style","display:grid");
+    } else if (option === 0) {
+      let calendarEle = document.getElementById('calendar');
+      calendarEle.setAttribute("style","opacity:100%;pointer-events:auto;");
+      let configDay = document.getElementById("config-day-1");
+      configDay.setAttribute("style","display:none");
+      let addStudentDay = document.getElementById("add-student-course");
+      addStudentDay.setAttribute("style","display:none");
+    }
+  }
+
+  function displayAddStudentEventPanel() {
+    let bookPanel = document.getElementById("book-panel");
+    bookPanel.setAttribute("style", "display: block");
   }
 
   function prepareISOstr() {
@@ -392,22 +497,20 @@
     let id = new Date().valueOf() + Math.round(Math.random() * 100);
     let hrMinStart = start.split(":");
     let hrMinEnd = end.split(":");
-    let startTime = new Date(date);
-    let endTime = new Date(date);
-    startTime.setHours(hrMinStart[0]);
-    startTime.setMinutes(hrMinStart[1]);
-    startTime.setSeconds("0");
-    endTime.setHours(hrMinEnd[0]);
-    endTime.setMinutes(hrMinEnd[1]);
-    endTime.setSeconds("0");
+
+    let [startTime, endTime, chinaStartTime, chinaEndTime] = 
+    setUpTimeConfigDay(date, hrMinStart[0], hrMinEnd[1], "0", hrMinEnd[0], hrMinEnd[1], "0");
 
     if (endTime - startTime >= 3600 * 1000 && avoidDouble(startTime, endTime)) {
       if ((endTime - startTime) / 1000 % 3600 === 0) {
         let hours = (endTime - startTime) / 1000 / 3600;
-        let s = new Date(startTime.getTime());
-        let e = new Date(startTime.getTime());
+        let s = new Date(startTime);
+        let e = new Date(startTime);
+        let c_s = new Date(chinaStartTime);
+        let c_e = new Date(chinaStartTime);
         for (let i = 0; i < hours; i++) {
           e.setMinutes(e.getMinutes() + 60);
+          c_e.setMinutes(c_e.getMinutes() + 60);
           let event = {
             "id": id,
             "title": "",
@@ -415,15 +518,95 @@
             "start": s.toISOString(),
             "end": e.toISOString()
           };
+          let event_c = {
+            "id": id,
+            "start": c_s.toISOString(),
+            "end": c_e.toISOString()
+          }
+          bookedEventsData.map(bookedEvent => {
+            if (checkTimeOverlap(event_c, bookedEvent)) {
+              event.color = "#29b80d";
+            }
+          })
           s.setHours(s.getHours() + 1);
+          c_s.setHours(c_s.getHours() + 1);
           // s.setMinutes(e.getMinutes() + 1);    //额外加1分钟
-          e = new Date(s.getTime());
+          e = new Date(s);
+          c_e = new Date(c_s);
           adminEvents.push(event);
-          calendar2.addEvent(event);
+          adminChinaEvents.push(event_c);
+          calendar2.addEvent(event_c);
         }
       }
     }
     calendar2.render();
+    console.log(adminChinaEvents)
+  }
+
+  function addStudentEvent(start, name, contact, targetScore, courseType, deliverType) {
+    let id = new Date().valueOf() + Math.round(Math.random() * 100);
+    let hrStart = start.split(":");
+    let startTime = new Date(configCurrentDay);
+    startTime.setHours(hrStart[0]);
+    startTime.setMinutes(hrStart[1]);
+    startTime.setSeconds("0");
+    let endTime = new Date(startTime);
+    endTime = new Date(endTime.setHours(endTime.getHours() + 1));
+    let event = {
+      "id": id,
+      "student_name": name,
+      "contact": contact,
+      "target_score": targetScore,
+      "course_type": courseType,
+      "deliver_type": deliverType,
+      "start": new Date(startTime).toISOString(),
+      "end": new Date(endTime).toISOString()
+    };
+    finishAddStudentEvent(event);
+  }
+
+  function setUpTimeConfigDay(date, s_h, s_m, s_s, e_h, e_m, e_s) {
+    let startTime = new Date(date);
+    let endTime = new Date(date);
+    startTime.setHours(s_h);
+    startTime.setMinutes(s_m);
+    startTime.setSeconds(s_s);
+    endTime.setHours(e_h);
+    endTime.setMinutes(e_m);
+    endTime.setSeconds(e_s);
+
+    let momentStartTime = momentChinaTime(date);
+    let momentEndTime = momentChinaTime(date);
+    let chinaStartTime = setMomentHrMinSec(momentStartTime, s_h, s_m, s_s).toDate();
+    let chinaEndTime = setMomentHrMinSec(momentEndTime, e_h, e_m, e_s).toDate();
+
+    return [startTime, endTime, chinaStartTime, chinaEndTime];
+  }
+
+  function finishAddStudentEvent(event) {
+    faunaBookEvent(event).then(res => {
+      let s = new Date(res.data.start.value).toLocaleString("zh-cn");
+      let e = new Date(res.data.end.value).toLocaleString("zh-cn");
+      let studentName = res.data.student_name;
+      let courseType = res.data.course_type;
+      let deliverType = res.data.deliver_type;
+      let timeStr = `${s} 至 ${e}`;
+      let strTutor = `${studentName}成功预约了${timeStr}的${courseType}课程, 授课形式:${deliverType}, 
+                      目标分: ${res.data.target_score}, 联系方式: ${res.data.contact}`;
+      sendTutorMsg(strTutor);
+      document.getElementById('add-student-course-btn').disabled = false;
+      loadPanel();
+      showConfigDayWindowPanelOne(0);
+    })
+  }
+
+  function sendTutorMsg(msg) {
+    faunaGetTutors()
+    .then(tutors => {
+      tutors.map(tutor => {
+        pushWxMessage(tutor.data.uid, msg, "https://lingyang-au-pte.com/tutor-view.html");
+      })
+    })
   }
 
   function saveConfig() {
@@ -476,7 +659,7 @@
     });
   }
 
-  function deleteEventPanel(start, end, event, dbId, contact, courseType, studentName, targetScore) {
+  function deleteEventPanel(start, end, event, dbId, contact, courseType, studentName, targetScore, deliverType) {
     let deletePanel = document.getElementById("delete-panel");
     document.getElementById("calendar").setAttribute("style", "opacity:10%");
     deletePanel.setAttribute("style", "display: flex");
@@ -484,9 +667,10 @@
     spans[0].innerHTML = start.toLocaleString("zh-cn");
     spans[1].innerHTML = end.toLocaleString("zh-cn");
     spans[2].innerHTML = courseType;
-    spans[3].innerHTML = studentName;
-    spans[4].innerHTML = contact;
-    spans[5].innerHTML = targetScore;
+    spans[3].innerHTML = deliverType;
+    spans[4].innerHTML = studentName;
+    spans[5].innerHTML = contact;
+    spans[6].innerHTML = targetScore;
     dbIdToDelete = dbId;
     let deleteEventEle = document.getElementById("delete-event-btn");
   }
@@ -507,7 +691,9 @@
       let courseType = res.data.course_type;
       let timeStr = `${s} 至 ${e}`;
       let strStudent = `【预约取消通知】${studentName}同学, 您预约${timeStr}的${courseType}课程已取消！如该操作有误，请尽快联系领洋客服处理`;
+      let strTutor = `【预约取消通知】${studentName}同学预约${timeStr}的${courseType}课程已取消！`;
       pushWxMessage(studentUid, strStudent, "https://lingyang-au-pte.com");
+      sendTutorMsg(strTutor);
       loadPanel();
       exitDeletePanel();
     });
@@ -731,16 +917,28 @@
   function adminSave() {
     let adminSaveBtn = document.getElementById("admin-save-btn");
     adminSaveBtn.disabled = true;
-    faunaAddEvents(JSON.parse(JSON.stringify(adminEvents)), 
-                   startISOstr, 
-                   endISOstr)
-    .then(res => {
-      adminSaveBtn.disabled = false;
-      appendSuccessInfo();
+    let adminEventsToSave = [];
+    adminChinaEvents.map( event => {
+      let eventToSave = {};
+      eventToSave.start = event.start;
+      eventToSave.end = event.end;
+      eventToSave.id = event.id;
+      adminEventsToSave.push(eventToSave);
     })
-    .catch(err => {
-      appendAlertInfo("数据保存失败");
-    })
+    console.log(adminEventsToSave)
+
+    //修改回去
+    // faunaAddEvents(JSON.parse(JSON.stringify(adminEventsToSave)), 
+    //                adminEventsLen,
+    //                startISOstr, 
+    //                endISOstr)
+    // .then(res => {
+    //   adminSaveBtn.disabled = false;
+    //   appendSuccessInfo();
+    // })
+    // .catch(err => {
+    //   appendAlertInfo("数据保存失败");
+    // })
   }
 
   function hideLoaderShowAdmin() {
@@ -759,29 +957,21 @@
         let newEvent = event.data;
         newEvent.start = newEvent.start.value;
         newEvent.end = newEvent.end.value;
+        bookedEventsData.map(bookedEvent => {
+          if (checkTimeOverlap(newEvent, bookedEvent)) {
+            newEvent.color = "#29b80d";
+          }
+        })
         adminEvents.push(newEvent);
+        adminChinaEvents.push(newEvent);
       })
+      adminEventsLen = adminEvents.length;
+      adminChinaEventsLen = adminChinaEvents.length;
       calendar2.setOption('events', adminEvents);
       calendar2.render();
       if (!saveBtnAdded) 
         setupSaveBtn();
     })
-  }
-
-  function checkTimeOverlap(event, selectedEvent) {
-    let timeOverlap = false;
-    let s = new Date(event.start);
-    let e = new Date(event.end);
-    let start = new Date(selectedEvent.start); 
-    let end = new Date(selectedEvent.end);
-    // console.log(s, e, start, end)
-    if (start < e && start >= s) {
-      timeOverlap = true;
-    }
-    if (end <= e && end > s) {
-      timeOverlap = true;
-    }
-    return timeOverlap;
   }
 </script>
 </head>
@@ -789,6 +979,64 @@
 <body class="align">
   <div id="summary-panel" style="display:none">
     <div id='calendar'></div>
+    <div id="config-day-1">
+      <div class="grid" id="book-panel" style="display: none;">
+        <div style="text-align: center;">
+          手动添加课程信息
+        </div>
+        <ul id="course-profile"></ul>
+        <form class="form login" id="add-student-course">
+          <div class="form__field">
+            <div style="display:flex; flex-direction:row; margin:auto;" class="top-level">
+              <fieldset style="padding:0 5px">
+                <input id="s-time" type="time" min="05:00" max="22:00" required>
+              </fieldset>
+              <fieldset style="padding:0 0">
+                - 1小时
+              </fieldset>
+            </div>
+          </div>
+          <div class="form__field">
+            <label for="studentname"><span>学员姓名</span></label>
+            <input id="studentname" type="text" placeholder="请填写姓名" maxlength="20" required>
+          </div>
+          <div class="form__field">
+            <label for="contact"><span>联系方式</span></label>
+            <input id="contact" type="text" placeholder="请填写联系方式" maxlength="20" required>
+          </div>
+          <div class="form__field">
+            <label for="targetscore"><span>目标分数</span></label>
+            <input id="targetscore" type="text" placeholder="请填写目标分数" maxlength="20" required>
+          </div>
+          <div class="form__field">
+            <label for="course-type"><span>预约类型</span></label>
+            <select id="course-type" required>
+              <option value="">请选择预约类型</option>
+              <option value="mock分析">mock分析</option>
+              <option value="口语">口语</option>
+              <option value="听力">听力</option>
+              <option value="阅读">阅读</option>
+              <option value="写作">写作</option>
+            </select>
+          </div>
+          <div class="form__field">
+            <label for="deliver-type"><span>授课形式</span></label>
+            <select id="deliver-type" required>
+              <option value="Zoom">Zoom</option>
+              <option value="腾讯会议">腾讯会议</option>
+            </select>
+          </div>
+          <div style="margin-top: 10px;">
+            <div class="form__field" style="float:right;">
+              <input type="submit" id="add-student-course-btn" value="提交" />
+            </div>
+            <div class="form__field" style="float:left; width:45%;">
+              <input type="button" class="return" id="exit-btn" onclick="showConfigDayWindowPanelOne(0)" value="返回" />
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
     <div id="manage-btns" onclick="exitHamburgerMenu()">
       <button onclick='adminPanel()' class="fc-button fc-button-primary fc-button-active" id="manage-btn">进入课时管理界面</button>
       <button onclick='filter()' class="fc-button fc-button-primary fc-button-active" id="filter-btn">过滤器</button>
@@ -799,9 +1047,10 @@
     <div id="delete-panel" onclick="exitDeletePanel()">
       <div><span>placeholder1</span> - <span>placeholder2</span></div>
       <div><strong>授课内容: </strong><span>placeholder3</span></div>
-      <div><strong>学员名称: </strong><span>placeholder4</span></div>
-      <div><strong>联系方式: </strong><span>placeholder5</span></div>
-      <div><strong>目标分数: </strong><span>placeholder6</span></div>
+      <div><strong>授课形式: </strong><span>placeholder4</span></div>
+      <div><strong>学员名称: </strong><span>placeholder5</span></div>
+      <div><strong>联系方式: </strong><span>placeholder6</span></div>
+      <div><strong>目标分数: </strong><span>placeholder7</span></div>
       <button onclick="deleteEvent()" class="fc-button fc-button-primary fc-button-active">取消预约</button>
     </div>
   </div>
@@ -892,13 +1141,13 @@
       <form id="config-day" autocomplete="off">
         <div style="display:flex; flex-direction:row;" class="top-level">
           <fieldset style="padding:0 5px">
-            <input id="s-time" type="time" name="s-time" min="05:00" max="21:00" required>
+            <input id="s-time" type="time" name="s-time" min="00:00" max="22:00" required>
           </fieldset>
           <fieldset style="padding:0 0">
             至
           </fieldset>
           <fieldset style="padding:0 5px">
-            <input id="e-time" type="time" name="e-time" min="05:00" max="21:00" required>
+            <input id="e-time" type="time" name="e-time" min="00:00" max="22:00" required>
           </fieldset>
         </div>
         <div style="display:flex; flex-direction:row;" class="bottom-level">
@@ -918,5 +1167,6 @@
       </form>
     </div>
   </div>
+
 </body>
 </html>

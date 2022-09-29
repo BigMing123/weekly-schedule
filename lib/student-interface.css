@@ -224,7 +224,7 @@
     }
 
     #calendar a.fc-col-header-cell-cushion:after {
-      content: "(北京时间; 课时单位为1小时)";
+      content: "(北京时间,课时单位为1小时)";
     } 
 
     #calendar .fc-scrollgrid-sync-inner {
@@ -234,7 +234,7 @@
 
   @media only screen and (min-width: 701px) {
     #calendar h2.fc-toolbar-title:after {
-      content: "(北京时间; 课时单位为1小时)";
+      content: "(北京时间,课时单位为1小时)";
     }
 
     #calendar .fc-day:not(.fc-day-disabled) .fc-scrollgrid-sync-inner {

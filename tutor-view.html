@@ -12,6 +12,10 @@
 <script src="https://cdn.jsdelivr.net/npm/faunadb@latest/dist/faunadb.js"></script>
 <script src="lib/fauna-api.js"></script>
 <script src="lib/wxpusher-api.js"></script>
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script> -->
+<script src="lib/moment.min.js"></script>
+<script src="lib/moment-timezone-with-data.min.js"></script>
+<script src="lib/moment-api.js"></script>
 
 <script>
   window.mobilecheck = function() {
@@ -21,21 +25,27 @@
   };
 </script>
 
+<!-- <script type="module">
+  import * as momentTimeZone from './lib/moment-timezone-with-data.min.js';
+</script> -->
+
 <script>
   let code = "";
-  // let uid = 'UID_U6cNrnSNU6jWHgwxw9Z4YXJoOaO1'; //测试
-  let uid = '';
+  let uid = localStorage.getItem('tutor_uid') ? localStorage.getItem('tutor_uid') : "";
   let tutor_name = "";
   let bookedEventsData = [];
   let adminEventsData = [];
-  let slotMinMax = [8,23];
   let hiddenDays = [];
   let calendar = null;
   let calendar2 = null;
   let saveBtnAdded = false;
   let adminEvents = [];
+  let displayedAdminEvents = [];
+  let adminChinaEvents = [];
   let configCurrentDay = null;
   let copyEvents = [];
+  let copyChinaEvents = [];
+  let veryStartISOstr = null;
   let startISOstr = null;
   let endISOstr = null;
   let courseTypeList = [];
@@ -45,6 +55,7 @@
   let dbIdToDelete = null;
   let adminEventsLen = 0;
   let currentPanel = "panel1";
+  const veryStart = new Date(new Date().setMonth(new Date().getMonth() - 3));
   const monthStart = new Date(new Date().setMonth(new Date().getMonth()));
   const monthEnd = new Date(new Date().setMonth(new Date().getMonth() + 1));
   // const monthStartOneDayEarly = new Date(monthStart.getTime() - 186400000); //开头前一天
@@ -59,6 +70,7 @@
         right: 'dayGridMonth'
       },
       locale: zhCn,
+      timeZone: "Asia/Shanghai",
       displayEventEnd: true,
       initialDate: new Date(),
       initialView: 'dayGridMonth',
@@ -86,7 +98,7 @@
       selectable: true,
       select: function(info) {
         configCurrentDay = info.start;
-          showConfigDayWindowPanelOne(1);
+        showConfigDayWindowPanelOne(1);
       },
     });
 
@@ -104,11 +116,12 @@
       navLinks: true, // can click day/week names to navigate views
       // dayMaxEvents: true, // allow "more" link when too many events
       eventContent: modifiedAdminEventContent,
-      events: adminEventsData,
-      editable: false,
+      events: adminEvents,
+      editable: true,
+      eventStartEditable: false,
       eventClick: function(info) {
-        let start = info.event._instance.range.start;
-        let end = info.event._instance.range.end;
+        let realEvent = recoverDisplayEvent(info.event);
+        removeSingleAdminEvent(realEvent.start, realEvent.end);
       },
       validRange: {
         start: monthStart,
@@ -117,6 +130,8 @@
       selectable: true,
       select: function(info) {
         configCurrentDay = info.start;
+        //设置成一个初始值
+        configCurrentDay.setHours("10");
         if (copyEvents.length !== 0) {
           finishCopyDay();
         } else {
@@ -129,7 +144,10 @@
     prepareLoginForm();
     prepareAddDayEvent();
     prepareAddStudentCourseEvent();
-    // hideQrCode(); //测试
+
+    //如果上次登陆，不需要扫码
+    if (uid)
+      hideQrCode();
   });
 
   function modifiedEventContent(arg) {
@@ -153,22 +171,38 @@
     }
   }
 
+  function isoStrToChinaLocaleTime(ISOstr) {
+    let china_datetime_str = new Date(ISOstr).toLocaleString("zh-cn", {timeZone: "Asia/Shanghai"});
+    return china_datetime_str;
+  }
+
+  function localeStrToHrMin(localeStr) {
+    let text = / (\d+:\d+):\d+/;
+    let match = text.exec(localeStr)[1];
+    return match;
+  }
+
   function modifiedAdminEventContent(arg) {
     let event = arg.event;
-    let start = new Date(event.start.getTime());
-    let end = new Date(event.end.getTime());
+    let start = new Date(event.start);
+    let end = new Date(event.end);
     let startTime = start.getHours() + ':' + (start.getMinutes()<10?'0':'') + start.getMinutes();
     let endTime = end.getHours() + ':' + (end.getMinutes()<10?'0':'') + end.getMinutes();
+    // startTime = localeStrToHrMin(isoStrToChinaLocaleTime(event.start));
+    // endTime = localeStrToHrMin(isoStrToChinaLocaleTime(event.end));
     let timeSpan = startTime + "-" + endTime;
     let bookedStr = '';
+    let eventRealTime = recoverDisplayEvent(arg.event);
+    let classRmv = "can-remove";
     bookedEventsData.map(bookedEvent => {
-      if (checkTimeOverlap(event, bookedEvent)) {
+      if (checkTimeOverlap(eventRealTime, bookedEvent)) {
         bookedStr = ' 已预约';
+        classRmv = "cannot-remove";
       }
     })
     return {
       html: 
-      `<span>${timeSpan}</span>${bookedStr}`
+      `<span class=${classRmv}>${timeSpan}</span>${bookedStr}`
     }
   }
 
@@ -216,7 +250,6 @@
   function prepareAddStudentCourseEvent() {
     let addStudentCourse = document.getElementById('add-student-course');
     addStudentCourse.addEventListener("submit", (event) => {
-      console.log("add student day")
       event.preventDefault();
       let start = event.srcElement[1].value;
       let name = event.srcElement[3].value;
@@ -237,9 +270,8 @@
   }
 
   function resetDay() {
-    // let copyAE = JSON.parse(JSON.stringify(adminEvents));
     adminEvents = adminEvents.filter(event => {
-      if(new Date(event.start).toLocaleDateString("zh-cn") === configCurrentDay.toLocaleDateString("zh-cn")) {
+      if (momentChinaTime(event.start).get('date') === momentChinaTime(configCurrentDay).get('date')) {
         calendar2.getEventById(event.id).remove();
       } else {
         return true;
@@ -248,9 +280,37 @@
     showConfigDayWindow(0);
   }
 
+  function removeSingleAdminEvent(s, e) {
+    // let answer = confirm(`
+    //   确认删除 \n
+    //   ${momentChinaTime(s).format('YYYY-MM-DD HH:mm:ss')} - ${momentChinaTime(e).format('YYYY-MM-DD HH:mm:ss')}
+    // `)
+    // if (answer == true) {
+    //   console.log("ok")
+    // }
+    let eventRealTime = {
+      start: s,
+      end: e
+    };
+    let booked = false;
+    bookedEventsData.map(bookedEvent => {
+      if (checkTimeOverlap(eventRealTime, bookedEvent)) {
+        booked = true;
+      }
+    })
+    if (!booked) {
+      adminEvents = adminEvents.filter(event => {
+        return !checkTimeOverlap(event, eventRealTime);
+      })
+    }
+    calendar2.setOption('events', modifyDisplayEvents(adminEvents));
+    calendar2.render();
+    
+  }
+
   function copyDay() {
     copyEvents = adminEvents.filter(event => {
-      if(new Date(event.start).toDateString() === configCurrentDay.toDateString())
+      if (momentChinaTime(event.start).get('date') === momentChinaTime(configCurrentDay).get('date'))
         return true;
     });
     showConfigDayWindow(0);
@@ -263,38 +323,26 @@
   function finishCopyDay() {
     resetDay(); 
     copyEvents = copyEvents.map(event => {
-      let newEvent = JSON.parse(JSON.stringify(event));
-      let start = new Date(newEvent.start);
-      let end = new Date(newEvent.end);
-      let startHours = start.getHours();
-      let startMinutes = start.getMinutes();     
-      let startSeconds = start.getSeconds();
-      let endHours = end.getHours();
-      let endMinutes = end.getMinutes();   
-      let endSeconds = end.getSeconds();
-
-      let newStart = new Date(configCurrentDay.getTime());
-      let newEnd = new Date(configCurrentDay.getTime());
-      newStart.setHours(startHours);
-      newStart.setMinutes(startMinutes);
-      newStart.setSeconds(startSeconds);
-      newEnd.setHours(endHours);
-      newEnd.setMinutes(endMinutes);
-      newEnd.setSeconds(endSeconds);
-      newEvent.start = newStart.toISOString();
-      newEvent.end = newEnd.toISOString();
+      let start = momentChinaTime(event.start);
+      let end = momentChinaTime(event.end);
+      start.set("month", configCurrentDay.getMonth()); 
+      start.set("date", configCurrentDay.getDate()); 
+      end.set("month", configCurrentDay.getMonth());
+      end.set("date", configCurrentDay.getDate());
+      let newEvent = {};
+      newEvent.start = start.toISOString();
+      newEvent.end = end.toISOString();
       newEvent.id = new Date().valueOf() + Math.round(Math.random() * 100);
-      delete newEvent.color;
       bookedEventsData.map(bookedEvent => {
         if (checkTimeOverlap(newEvent, bookedEvent)) {
           newEvent.color = "#29b80d";
         }
       })
-      calendar2.addEvent(newEvent);
+      calendar2.addEvent(modifyDisplayEvent(newEvent));
       calendar2.render();
       return newEvent;
     })
-    adminEvents =  adminEvents.concat(copyEvents);
+    adminEvents = adminEvents.concat(copyEvents);
     copyEvents = [];
     var element = document.getElementById("calendar2");
     element.classList.remove("active");
@@ -349,6 +397,11 @@
     endISOstr.setMinutes(0);
     endISOstr.setSeconds(0);
     endISOstr = endISOstr.toISOString();
+    veryStartISOstr = new Date(veryStart.getTime());
+    veryStartISOstr.setHours(0);
+    veryStartISOstr.setMinutes(0);
+    veryStartISOstr.setSeconds(0);
+    veryStartISOstr = veryStartISOstr.toISOString();
   }
 
   function loadPanel(option) {
@@ -374,7 +427,7 @@
       bookedEventsData = JSON.parse(JSON.stringify(clsEvents));
       let calendarEl = document.getElementById('summary-panel');
       calendarEl.setAttribute("style","display:block");
-      calendar.setOption('events', clsEvents);
+      calendar.setOption('events', modifyDisplayEvents(clsEvents));
       calendar.render();
       if (option === 0) {
         setupSubmitBtn();
@@ -459,22 +512,15 @@
     let id = new Date().valueOf() + Math.round(Math.random() * 100);
     let hrMinStart = start.split(":");
     let hrMinEnd = end.split(":");
-    let startTime = new Date(date);
-    let endTime = new Date(date);
-    startTime.setHours(hrMinStart[0]);
-    startTime.setMinutes(hrMinStart[1]);
-    startTime.setSeconds("0");
-    endTime.setHours(hrMinEnd[0]);
-    endTime.setMinutes(hrMinEnd[1]);
-    endTime.setSeconds("0");
-
+    let startTime = setMomentHrMinSec(momentChinaTime(date), hrMinStart[0], hrMinStart[1], "0");
+    let endTime = setMomentHrMinSec(momentChinaTime(date), hrMinEnd[0], hrMinEnd[1], "0");
     if (endTime - startTime >= 3600 * 1000 && avoidDouble(startTime, endTime)) {
       if ((endTime - startTime) / 1000 % 3600 === 0) {
         let hours = (endTime - startTime) / 1000 / 3600;
-        let s = new Date(startTime.getTime());
-        let e = new Date(startTime.getTime());
+        let s = startTime.clone();
+        let e = startTime.clone();
         for (let i = 0; i < hours; i++) {
-          e.setMinutes(e.getMinutes() + 60);
+          e.set('hours', e.get('hours') + 1);
           let event = {
             "id": id,
             "title": "",
@@ -487,11 +533,11 @@
               event.color = "#29b80d";
             }
           })
-          s.setHours(s.getHours() + 1);
+          s.set('hours', s.get('hours') + 1);
           // s.setMinutes(e.getMinutes() + 1);    //额外加1分钟
-          e = new Date(s.getTime());
+          e = s.clone();
           adminEvents.push(event);
-          calendar2.addEvent(event);
+          calendar2.addEvent(modifyDisplayEvent(event));
         }
       }
     }
@@ -520,8 +566,28 @@
     finishAddStudentEvent(event);
   }
 
+  function setUpTimeConfigDay(date, s_h, s_m, s_s, e_h, e_m, e_s) {
+    let startTime = new Date(date);
+    let endTime = new Date(date);
+    startTime.setHours(s_h);
+    startTime.setMinutes(s_m);
+    startTime.setSeconds(s_s);
+    endTime.setHours(e_h);
+    endTime.setMinutes(e_m);
+    endTime.setSeconds(e_s);
+
+    let momentStartTime = momentChinaTime(date);
+    let momentEndTime = momentChinaTime(date);
+    let chinaStartTime = setMomentHrMinSec(momentStartTime, s_h, s_m, s_s).toDate();
+    let chinaEndTime = setMomentHrMinSec(momentEndTime, e_h, e_m, e_s).toDate();
+
+    return [startTime, endTime, chinaStartTime, chinaEndTime];
+  }
+
   function finishAddStudentEvent(event) {
-    faunaBookEvent(event).then(res => {
+    let newEvent = JSON.parse(JSON.stringify(event));
+    newEvent = recoverDisplayEvent(newEvent);
+    faunaBookEvent(newEvent).then(res => {
       let s = new Date(res.data.start.value).toLocaleString("zh-cn");
       let e = new Date(res.data.end.value).toLocaleString("zh-cn");
       let studentName = res.data.student_name;
@@ -628,7 +694,9 @@
       let courseType = res.data.course_type;
       let timeStr = `${s} 至 ${e}`;
       let strStudent = `【预约取消通知】${studentName}同学, 您预约${timeStr}的${courseType}课程已取消！如该操作有误，请尽快联系领洋客服处理`;
+      let strTutor = `【预约取消通知】${studentName}同学预约${timeStr}的${courseType}课程已取消！`;
       pushWxMessage(studentUid, strStudent, "https://lingyang-au-pte.com");
+      sendTutorMsg(strTutor);
       loadPanel();
       exitDeletePanel();
     });
@@ -826,6 +894,7 @@
         let linkNode = document.getElementsByTagName('link')[1];
         linkNode.disabled = true;
         loadPanel(0);
+        localStorage.setItem('tutor_uid', uid);
       } else {
         document.getElementById("login-panel").setAttribute("style","display:block");
       }
@@ -860,6 +929,8 @@
       eventToSave.id = event.id;
       adminEventsToSave.push(eventToSave);
     })
+    console.log(adminEventsToSave)
+    //修改回去
     faunaAddEvents(JSON.parse(JSON.stringify(adminEventsToSave)), 
                    adminEventsLen,
                    startISOstr, 
@@ -897,7 +968,8 @@
         adminEvents.push(newEvent);
       })
       adminEventsLen = adminEvents.length;
-      calendar2.setOption('events', adminEvents);
+      calendar2.setOption('events', modifyDisplayEvents(adminEvents));
+      console.log(adminEvents)
       calendar2.render();
       if (!saveBtnAdded) 
         setupSaveBtn();
@@ -1071,13 +1143,13 @@
       <form id="config-day" autocomplete="off">
         <div style="display:flex; flex-direction:row;" class="top-level">
           <fieldset style="padding:0 5px">
-            <input id="s-time" type="time" name="s-time" min="05:00" max="22:00" required>
+            <input id="s-time" type="time" name="s-time" min="00:00" max="24:00" required>
           </fieldset>
           <fieldset style="padding:0 0">
             至
           </fieldset>
           <fieldset style="padding:0 5px">
-            <input id="e-time" type="time" name="e-time" min="05:00" max="22:00" required>
+            <input id="e-time" type="time" name="e-time" min="00:00" max="24:00" required>
           </fieldset>
         </div>
         <div style="display:flex; flex-direction:row;" class="bottom-level">
@@ -1087,9 +1159,9 @@
           <fieldset>
             <input onclick="copyDay()" type="button" id="copy-day" style="cursor:pointer;" value="复制">
           </fieldset>
-          <fieldset>
+          <!-- <fieldset>
             <input onclick="resetDay()" type="button" id="reset-day" style="cursor:pointer;" value="重置">
-          </fieldset>
+          </fieldset> -->
           <fieldset>
             <input onclick="showConfigDayWindow(0);" id="config-window-back" type="button" value="返回">
           </fieldset>

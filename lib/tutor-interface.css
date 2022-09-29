@@ -279,7 +279,17 @@
 
   /* 禁用管理界面的单活动点击 */
   #calendar2 .fc-daygrid-event-harness a {
-    pointer-events: none;
+    /* pointer-events: none; */
+    cursor: pointer;
+  }
+
+  #calendar2 .fc-daygrid-event-harness a:hover {
+    background-color: rgb(169, 33, 33);
+    border-color: rgb(169, 33, 33);
+  }
+
+  #calendar2 .fc-daygrid-event-harness a:hover span.can-remove {
+    text-decoration: line-through;
   }
 
   #book-panel .form {

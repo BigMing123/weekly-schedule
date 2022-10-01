@@ -999,13 +999,15 @@
   function convertCourseJSONToCSV(arr) {
     let newArr = [];
     for (let i = 0; i < arr.length; i++) {
+      let start = new Date(arr[i].start).toLocaleString("zh-cn", {timeZone: "Asia/Shanghai"});
+      let end = new Date(arr[i].end).toLocaleString("zh-cn", {timeZone: "Asia/Shanghai"});
       let e = {
         'student_uid': arr[i].student_uid,
         'student_name': arr[i].student_name,
         'course_type': arr[i].course_type,
         'target_score': arr[i].target_score,
-        'start': arr[i].start,
-        'end': arr[i].end,
+        'start': start,
+        'end': end,
       };
       newArr.push(e);
     }

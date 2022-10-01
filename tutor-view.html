@@ -588,7 +588,12 @@
       "start": new Date(startTime).toISOString(),
       "end": new Date(endTime).toISOString()
     };
-    finishAddStudentEvent(event);
+    if (avoidDouble(new Date(startTime), new Date(endTime))) {
+      finishAddStudentEvent(event);
+    } else {
+      document.getElementById('add-student-course-btn').disabled = false;
+      showConfigDayWindowPanelOne(0);
+    }
   }
 
   function setUpTimeConfigDay(date, s_h, s_m, s_s, e_h, e_m, e_s) {
@@ -711,6 +716,12 @@
   }
 
   function deleteEvent() {
+    let eventToDelete = bookedEventsData.filter(e => {
+      if (e.dbId == dbIdToDelete) {
+        return true;
+      }
+    })[0];
+    faunaDeleteAdminEvent(eventToDelete.start, eventToDelete.end);
     faunaDeleteEvent(dbIdToDelete)
     .then(res => {
       let s = new Date(res.data.start.value).toLocaleString("zh-cn");

@@ -405,6 +405,21 @@
     veryStartISOstr = veryStartISOstr.toISOString();
   }
 
+  function download(filename, text) {
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('download', filename);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  }
+
+  function downloadBookedEvents() {
+    let file = convertCourseJSONToCSV(bookedEventsData);
+    download('default', file);
+  }
+
   function loadPanel(option) {
     let loader = document.getElementById("loader");
     loader.setAttribute("style","display:block");
@@ -980,6 +995,27 @@
         setupSaveBtn();
     })
   }
+
+  function convertCourseJSONToCSV(arr) {
+    let newArr = [];
+    for (let i = 0; i < arr.length; i++) {
+      let e = {
+        'student_uid': arr[i].student_uid,
+        'student_name': arr[i].student_name,
+        'course_type': arr[i].course_type,
+        'target_score': arr[i].target_score,
+        'start': arr[i].start,
+        'end': arr[i].end,
+      };
+      newArr.push(e);
+    }
+
+    const array = [Object.keys(newArr[0])].concat(newArr)
+
+    return array.map(it => {
+      return Object.values(it).toString()
+    }).join('\n')
+  }
 </script>
 </head>
 
@@ -1047,6 +1083,7 @@
     <div id="manage-btns" onclick="exitHamburgerMenu()">
       <button onclick='adminPanel()' class="fc-button fc-button-primary fc-button-active" id="manage-btn">进入课时管理界面</button>
       <button onclick='filter()' class="fc-button fc-button-primary fc-button-active" id="filter-btn">过滤器</button>
+      <button onclick='downloadBookedEvents()' class="fc-button fc-button-primary fc-button-active" id="export-btn">导出数据</button>
     </div>
     <div id="filter-group">
       <button onclick='saveFilter()' class="fc-button fc-button-primary fc-button-active" id="filter-btn-confirm">确认</button>

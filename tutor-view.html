@@ -442,7 +442,7 @@
   function loadPanelWithFilter(courseType, studentName) {
     let loader = document.getElementById("loader");
     loader.setAttribute("style","display:block");
-    faunaGetBookedEventsCurrentMonth(startISOstr, endISOstr)
+    faunaGetBookedEventsCurrentMonth(veryStartISOstr, endISOstr)
     .then(events => {
       let filteredEvents = []
       for (let i = 0; i < events.length; i++) {

@@ -294,6 +294,8 @@
       end: e
     };
     let booked = false;
+    let newEvents = [];
+    let idToRmv = "";
     bookedEventsData.map(bookedEvent => {
       if (checkTimeOverlap(eventRealTime, bookedEvent)) {
         booked = true;
@@ -301,12 +303,15 @@
     })
     if (!booked) {
       adminEvents = adminEvents.filter(event => {
+        if (checkTimeOverlap(event, eventRealTime)) {
+          idToRmv = event.id;
+          calendar2.getEventById(idToRmv).remove();
+        }
         return !checkTimeOverlap(event, eventRealTime);
-      })
+      });
     }
-    calendar2.setOption('events', modifyDisplayEvents(adminEvents));
-    calendar2.render();
-    
+    // calendar2.setOption('events', modifyDisplayEvents(newEvents));
+    // calendar2.render();
   }
 
   function copyDay() {
@@ -529,7 +534,6 @@
   }
 
   function addAdminEvent(date, start, end) {
-    let id = new Date().valueOf() + Math.round(Math.random() * 100);
     let hrMinStart = start.split(":");
     let hrMinEnd = end.split(":");
     let startTime = setMomentHrMinSec(momentChinaTime(date), hrMinStart[0], hrMinStart[1], "0");
@@ -540,6 +544,7 @@
         let s = startTime.clone();
         let e = startTime.clone();
         for (let i = 0; i < hours; i++) {
+          let id = new Date().valueOf() + Math.round(Math.random() * 100);
           e.set('hours', e.get('hours') + 1);
           let event = {
             "id": id,
@@ -607,6 +612,7 @@
   function finishAddStudentEvent(event) {
     let newEvent = JSON.parse(JSON.stringify(event));
     newEvent = recoverDisplayEvent(newEvent);
+    faunaAddEvent(newEvent);
     faunaBookEvent(newEvent).then(res => {
       let s = new Date(res.data.start.value).toLocaleString("zh-cn");
       let e = new Date(res.data.end.value).toLocaleString("zh-cn");
@@ -949,7 +955,6 @@
       eventToSave.id = event.id;
       adminEventsToSave.push(eventToSave);
     })
-    console.log(adminEventsToSave)
     //修改回去
     faunaAddEvents(JSON.parse(JSON.stringify(adminEventsToSave)), 
                    adminEventsLen,
@@ -989,7 +994,6 @@
       })
       adminEventsLen = adminEvents.length;
       calendar2.setOption('events', modifyDisplayEvents(adminEvents));
-      console.log(adminEvents)
       calendar2.render();
       if (!saveBtnAdded) 
         setupSaveBtn();

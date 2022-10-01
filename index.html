@@ -473,6 +473,16 @@
     return timeOverlap;
   }
 
+  function check48Hrs(event) {
+    let hrs = 48;
+    let s = new Date(event.start);
+    let within48hrs = false;
+    if (s - new Date() < 48 * 3600 * 1000) {
+      within48hrs = true;
+    }
+    return within48hrs;
+  }
+
   function prepareISOstr() {
     startISOstr = new Date(monthStart.getTime());
     startISOstr.setHours(0);
@@ -524,6 +534,9 @@
           if (checkTimeOverlap(ae, be)) {
             selectable = false;
           } 
+          if (check48Hrs(ae)) {
+            selectable = false;
+          }
         })
       }
       if (selectable) {

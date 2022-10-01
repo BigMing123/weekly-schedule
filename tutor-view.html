@@ -6,6 +6,7 @@
 <link href='lib/main.css' rel='stylesheet' />
 <link href='lib/common.css' rel='stylesheet' />
 <link href='lib/tutor-interface.css' rel='stylesheet' />
+<link rel="icon" type="image/x-icon" href="assets/lingyang-favicon2.ico">
 <script src='lib/main.js'></script>
 <script src='lib/locales/zh-cn.js'></script>
 <script src="lib/axios.min.js"></script>
@@ -407,7 +408,7 @@
   function loadPanel(option) {
     let loader = document.getElementById("loader");
     loader.setAttribute("style","display:block");
-    faunaGetBookedEventsCurrentMonth(startISOstr, endISOstr)
+    faunaGetBookedEventsCurrentMonth(veryStartISOstr, endISOstr)
     .then(events => {
       let clsEvents = []
       for (let i = 0; i < events.length; i++) {
@@ -415,7 +416,7 @@
         event['dbId'] = events[i].ref.value.id;
         event['start'] = event.start.value;
         event['end'] = event.end.value;
-        event['color'] = assignColorSingleEvent(event.course_type);
+        event['color'] = assignColorSingleEvent(event.course_type, event.start);
         if (!courseTypeList.includes(event.course_type)) {
           courseTypeList.push(event.course_type);
         }
@@ -449,7 +450,7 @@
         event['dbId'] = events[i].ref.value.id;
         event['start'] = event.start.value;
         event['end'] = event.end.value;
-        event['color'] = assignColorSingleEvent(event.course_type);
+        event['color'] = assignColorSingleEvent(event.course_type, event.start);
         if (courseType === "所有课程") {
           if (studentName === "所有学员") {
             filteredEvents.push(event);
@@ -481,7 +482,11 @@
     });
   }
 
-  function assignColorSingleEvent(courseType) {
+  function assignColorSingleEvent(courseType, start) {
+    let st = new Date(start);
+    if (st - new Date() < 0) {
+      return "#6e6e6e";
+    }
     let colors = ["#c41b67", "#9328a8", "#285ba8", "#4ba828", "#e89c0e"]
     if (courseType === "mock分析") {
       return colors[0];

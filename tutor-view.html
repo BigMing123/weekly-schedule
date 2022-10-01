@@ -416,7 +416,7 @@
         event['dbId'] = events[i].ref.value.id;
         event['start'] = event.start.value;
         event['end'] = event.end.value;
-        event['color'] = assignColorSingleEvent(event.course_type, event.start);
+        event['color'] = assignColorSingleEvent(event.course_type, event.end);
         if (!courseTypeList.includes(event.course_type)) {
           courseTypeList.push(event.course_type);
         }
@@ -450,7 +450,7 @@
         event['dbId'] = events[i].ref.value.id;
         event['start'] = event.start.value;
         event['end'] = event.end.value;
-        event['color'] = assignColorSingleEvent(event.course_type, event.start);
+        event['color'] = assignColorSingleEvent(event.course_type, event.end);
         if (courseType === "所有课程") {
           if (studentName === "所有学员") {
             filteredEvents.push(event);
@@ -482,9 +482,9 @@
     });
   }
 
-  function assignColorSingleEvent(courseType, start) {
-    let st = new Date(start);
-    if (st - new Date() < 0) {
+  function assignColorSingleEvent(courseType, end) {
+    let et = new Date(end);
+    if (et - new Date() < 0) {
       return "#6e6e6e";
     }
     let colors = ["#c41b67", "#9328a8", "#285ba8", "#4ba828", "#e89c0e"]

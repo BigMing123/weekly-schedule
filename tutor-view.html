@@ -145,7 +145,7 @@
     prepareLoginForm();
     prepareAddDayEvent();
     prepareAddStudentCourseEvent();
-
+    console.log(new Date())
     //如果上次登陆，不需要扫码
     if (uid)
       hideQrCode();
@@ -590,13 +590,16 @@
       "end": new Date(endTime).toISOString()
     };
 
-    avoidDoubleBook([event])
+
+    let eventChinaTZ = recoverDisplayEvent(event);
+    avoidDoubleBook([eventChinaTZ])
     .then(res => {
       if (res) {
-        if (avoidDouble(new Date(startTime), new Date(endTime))) {
-          faunaAddEvent(event);
+        if (avoidDouble(new Date(eventChinaTZ.start), new Date(eventChinaTZ.end))) {
+          console.log(eventChinaTZ)
+          faunaAddEvent(eventChinaTZ);
         } 
-        finishAddStudentEvent(event);
+        finishAddStudentEvent(eventChinaTZ);
       } else {
         document.getElementById('add-student-course-btn').disabled = false;
         showConfigDayWindowPanelOne(0);
@@ -658,9 +661,7 @@
   }
 
   function finishAddStudentEvent(event) {
-    let newEvent = JSON.parse(JSON.stringify(event));
-    newEvent = recoverDisplayEvent(newEvent);
-    faunaBookEvent(newEvent).then(res => {
+    faunaBookEvent(event).then(res => {
       let s = new Date(res.data.start.value).toLocaleString("zh-cn");
       let e = new Date(res.data.end.value).toLocaleString("zh-cn");
       let studentName = res.data.student_name;

@@ -446,6 +446,7 @@
         clsEvents.push(event);
       }
       bookedEventsData = JSON.parse(JSON.stringify(clsEvents));
+      onlyLoadAdminEvents();
       let calendarEl = document.getElementById('summary-panel');
       calendarEl.setAttribute("style","display:block");
       calendar.setOption('events', modifyDisplayEvents(clsEvents));
@@ -588,12 +589,54 @@
       "start": new Date(startTime).toISOString(),
       "end": new Date(endTime).toISOString()
     };
-    if (avoidDouble(new Date(startTime), new Date(endTime))) {
-      finishAddStudentEvent(event);
-    } else {
-      document.getElementById('add-student-course-btn').disabled = false;
-      showConfigDayWindowPanelOne(0);
+
+    avoidDoubleBook([event])
+    .then(res => {
+      if (res) {
+        if (avoidDouble(new Date(startTime), new Date(endTime))) {
+          faunaAddEvent(event);
+        } 
+        finishAddStudentEvent(event);
+      } else {
+        document.getElementById('add-student-course-btn').disabled = false;
+        showConfigDayWindowPanelOne(0);
+      }
+    })
+  }
+
+  async function avoidDoubleBook(selectedEvents) {
+    return new Promise(resolve => {
+      faunaGetBookedEventsCurrentMonth(startISOstr, endISOstr)
+      .then(events => {
+        let flag = true;
+        events.map(event => {
+          let newEvent = JSON.parse(JSON.stringify(event));
+          selectedEvents.map(selectedEvent => {
+            newEvent.data.start = event.data.start.value;
+            newEvent.data.end = event.data.end.value;
+            if (checkTimeOverlap(newEvent.data, selectedEvent)) {
+              flag = false;
+            }
+          })
+        })
+        return resolve(flag);
+      })
+    })
+  }
+
+  function checkTimeOverlap(event, selectedEvent) {
+    let timeOverlap = false;
+    let s = new Date(event.start);
+    let e = new Date(event.end);
+    let start = new Date(selectedEvent.start); 
+    let end = new Date(selectedEvent.end);
+    if (start < e && start >= s) {
+      timeOverlap = true;
     }
+    if (end <= e && end > s) {
+      timeOverlap = true;
+    }
+    return timeOverlap;
   }
 
   function setUpTimeConfigDay(date, s_h, s_m, s_s, e_h, e_m, e_s) {
@@ -617,7 +660,6 @@
   function finishAddStudentEvent(event) {
     let newEvent = JSON.parse(JSON.stringify(event));
     newEvent = recoverDisplayEvent(newEvent);
-    faunaAddEvent(newEvent);
     faunaBookEvent(newEvent).then(res => {
       let s = new Date(res.data.start.value).toLocaleString("zh-cn");
       let e = new Date(res.data.end.value).toLocaleString("zh-cn");
@@ -716,12 +758,12 @@
   }
 
   function deleteEvent() {
-    let eventToDelete = bookedEventsData.filter(e => {
-      if (e.dbId == dbIdToDelete) {
-        return true;
-      }
-    })[0];
-    faunaDeleteAdminEvent(eventToDelete.start, eventToDelete.end);
+    // let eventToDelete = bookedEventsData.filter(e => {
+    //   if (e.dbId == dbIdToDelete) {
+    //     return true;
+    //   }
+    // })[0];
+    // faunaDeleteAdminEvent(eventToDelete.start, eventToDelete.end);
     faunaDeleteEvent(dbIdToDelete)
     .then(res => {
       let s = new Date(res.data.start.value).toLocaleString("zh-cn");
@@ -1008,6 +1050,24 @@
       calendar2.render();
       if (!saveBtnAdded) 
         setupSaveBtn();
+    })
+  }
+
+  function onlyLoadAdminEvents() {
+    adminEvents = [];
+    faunaGetEventsCurrentMonth(startISOstr, endISOstr)
+    .then(events => {
+      events.map(event => {
+        let newEvent = event.data;
+        newEvent.start = newEvent.start.value;
+        newEvent.end = newEvent.end.value;
+        bookedEventsData.map(bookedEvent => {
+          if (checkTimeOverlap(newEvent, bookedEvent)) {
+            newEvent.color = "#29b80d";
+          }
+        })
+        adminEvents.push(newEvent);
+      })
     })
   }
 

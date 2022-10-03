@@ -495,7 +495,7 @@
       }
       let calendarEl = document.getElementById('summary-panel');
       calendarEl.setAttribute("style","display:block");
-      calendar.setOption('events', filteredEvents);
+      calendar.setOption('events', modifyDisplayEvents(filteredEvents));
       calendar.render();
       let loader = document.getElementById("loader");
       loader.setAttribute("style","display:none");
@@ -1078,12 +1078,13 @@
       let start = new Date(arr[i].start).toLocaleString("zh-cn", {timeZone: "Asia/Shanghai"});
       let end = new Date(arr[i].end).toLocaleString("zh-cn", {timeZone: "Asia/Shanghai"});
       let e = {
-        'student_uid': arr[i].student_uid,
-        'student_name': arr[i].student_name,
-        'course_type': arr[i].course_type,
-        'target_score': arr[i].target_score,
-        'start': start,
-        'end': end,
+        'id': arr[i].student_uid,
+        '名字': arr[i].student_name,
+        '授课类型': arr[i].course_type,
+        '目标分数': arr[i].target_score,
+        '联系方式': arr[i].contact,
+        '开始时间': start,
+        '结束时间': end,
       };
       newArr.push(e);
     }

@@ -125,7 +125,7 @@
         removeSingleAdminEvent(realEvent.start, realEvent.end);
       },
       validRange: {
-        start: monthStart,
+        start: veryStart,
           end: monthEnd
       },
       selectable: true,
@@ -446,9 +446,12 @@
         clsEvents.push(event);
       }
       bookedEventsData = JSON.parse(JSON.stringify(clsEvents));
+      // console.log(bookedEventsData)
       onlyLoadAdminEvents();
       let calendarEl = document.getElementById('summary-panel');
       calendarEl.setAttribute("style","display:block");
+      console.log(clsEvents)
+      console.log(modifyDisplayEvents(clsEvents))
       calendar.setOption('events', modifyDisplayEvents(clsEvents));
       calendar.render();
       if (option === 0) {
@@ -1032,7 +1035,7 @@
 
   function loadAdminEvents() {
     adminEvents = [];
-    faunaGetEventsCurrentMonth(startISOstr, endISOstr)
+    faunaGetEventsCurrentMonth(veryStartISOstr, endISOstr)
     .then(events => {
       hideLoaderShowAdmin();
       events.map(event => {

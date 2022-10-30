@@ -450,8 +450,8 @@
       onlyLoadAdminEvents();
       let calendarEl = document.getElementById('summary-panel');
       calendarEl.setAttribute("style","display:block");
-      console.log(clsEvents)
-      console.log(modifyDisplayEvents(clsEvents))
+      // console.log(clsEvents)
+      // console.log(modifyDisplayEvents(clsEvents))
       calendar.setOption('events', modifyDisplayEvents(clsEvents));
       calendar.render();
       if (option === 0) {

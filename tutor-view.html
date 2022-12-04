@@ -498,13 +498,21 @@
           }
         }
       }
-      let calendarEl = document.getElementById('summary-panel');
-      calendarEl.setAttribute("style","display:block");
-      calendar.setOption('events', modifyDisplayEvents(filteredEvents));
-      calendar.render();
-      let loader = document.getElementById("loader");
-      loader.setAttribute("style","display:none");
-      document.getElementById("calendar").setAttribute("style", "opacity:100%");
+      onlyLoadAdminEvents().then(emptySlots => {
+        let calendarEl = document.getElementById('summary-panel');
+        calendarEl.setAttribute("style","display:block");
+        let displayEvents = [];
+        if (courseType === "所有课程" && studentName === "所有学员") {
+          displayEvents = filteredEvents.concat(emptySlots);
+        } else {
+          displayEvents = filteredEvents;
+        }
+        calendar.setOption('events', modifyDisplayEvents(displayEvents));
+        calendar.render();
+        let loader = document.getElementById("loader");
+        loader.setAttribute("style","display:none");
+        document.getElementById("calendar").setAttribute("style", "opacity:100%");
+      })
     });
   }
 

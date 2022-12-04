@@ -4,6 +4,10 @@
     margin: 0 auto;
   }
 
+  #calendar .fc-daygrid-day-frame.fc-scrollgrid-sync-inner:hover {
+    background-color: #e3e1e1;
+  }
+
   #calendar .custom-event-single {
     list-style: none;
     width: 100%;

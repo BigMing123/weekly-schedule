@@ -159,7 +159,7 @@
     let endTime = end.getHours() + ':' + (end.getMinutes()<10?'0':'') + end.getMinutes();
     let timeSpan = startTime + "-" + endTime;
     let courseType = event.extendedProps.course_type;
-    let deliverType = event.extendedProps.deliver_type ? event.extendedProps.deliver_type : "【授课形式】";
+    let deliverType = event.extendedProps.deliver_type ? event.extendedProps.deliver_type : "【可排课】";
     let name = event.extendedProps.student_name;
     return {
       html: 
@@ -431,6 +431,8 @@
     faunaGetBookedEventsCurrentMonth(veryStartISOstr, endISOstr)
     .then(events => {
       let clsEvents = []
+      calendar.setOption('events', []);
+      calendar.render();
       for (let i = 0; i < events.length; i++) {
         let event = events[i].data;
         event['dbId'] = events[i].ref.value.id;
@@ -447,19 +449,19 @@
       }
       bookedEventsData = JSON.parse(JSON.stringify(clsEvents));
       // console.log(bookedEventsData)
-      onlyLoadAdminEvents();
-      let calendarEl = document.getElementById('summary-panel');
-      calendarEl.setAttribute("style","display:block");
-      // console.log(clsEvents)
-      // console.log(modifyDisplayEvents(clsEvents))
-      calendar.setOption('events', modifyDisplayEvents(clsEvents));
-      calendar.render();
-      if (option === 0) {
-        setupSubmitBtn();
-        setupFilter();
-      }
-      let loader = document.getElementById("loader");
-      loader.setAttribute("style","display:none");
+      onlyLoadAdminEvents().then(emptySlots => {
+        let calendarEl = document.getElementById('summary-panel');
+        calendarEl.setAttribute("style","display:block");
+        let displayEvents = clsEvents.concat(emptySlots);
+        calendar.setOption('events', modifyDisplayEvents(displayEvents));
+        calendar.render();
+        if (option === 0) {
+          setupSubmitBtn();
+          setupFilter();
+        }
+        let loader = document.getElementById("loader");
+        loader.setAttribute("style","display:none");
+      })
     });
   }
 
@@ -675,7 +677,7 @@
                       目标分: ${res.data.target_score}, 联系方式: ${res.data.contact}`;
       sendTutorMsg(strTutor);
       document.getElementById('add-student-course-btn').disabled = false;
-      loadPanel();
+      loadPanel(1);
       showConfigDayWindowPanelOne(0);
     })
   }
@@ -740,19 +742,21 @@
   }
 
   function deleteEventPanel(start, end, event, dbId, contact, courseType, studentName, targetScore, deliverType) {
-    let deletePanel = document.getElementById("delete-panel");
-    document.getElementById("calendar").setAttribute("style", "opacity:10%");
-    deletePanel.setAttribute("style", "display: flex");
-    let spans = deletePanel.querySelectorAll('span');
-    spans[0].innerHTML = start.toLocaleString("zh-cn");
-    spans[1].innerHTML = end.toLocaleString("zh-cn");
-    spans[2].innerHTML = courseType;
-    spans[3].innerHTML = deliverType;
-    spans[4].innerHTML = studentName;
-    spans[5].innerHTML = contact;
-    spans[6].innerHTML = targetScore;
-    dbIdToDelete = dbId;
-    let deleteEventEle = document.getElementById("delete-event-btn");
+    if (dbId) {
+      let deletePanel = document.getElementById("delete-panel");
+      document.getElementById("calendar").setAttribute("style", "opacity:10%");
+      deletePanel.setAttribute("style", "display: flex");
+      let spans = deletePanel.querySelectorAll('span');
+      spans[0].innerHTML = start.toLocaleString("zh-cn");
+      spans[1].innerHTML = end.toLocaleString("zh-cn");
+      spans[2].innerHTML = courseType;
+      spans[3].innerHTML = deliverType;
+      spans[4].innerHTML = studentName;
+      spans[5].innerHTML = contact;
+      spans[6].innerHTML = targetScore;
+      dbIdToDelete = dbId;
+      let deleteEventEle = document.getElementById("delete-event-btn");
+    }
   }
 
   function exitDeletePanel() {
@@ -762,12 +766,6 @@
   }
 
   function deleteEvent() {
-    // let eventToDelete = bookedEventsData.filter(e => {
-    //   if (e.dbId == dbIdToDelete) {
-    //     return true;
-    //   }
-    // })[0];
-    // faunaDeleteAdminEvent(eventToDelete.start, eventToDelete.end);
     faunaDeleteEvent(dbIdToDelete)
     .then(res => {
       let s = new Date(res.data.start.value).toLocaleString("zh-cn");
@@ -780,7 +778,7 @@
       let strTutor = `【预约取消通知】${studentName}同学预约${timeStr}的${courseType}课程已取消！`;
       pushWxMessage(studentUid, strStudent, "https://lingyang-au-pte.com");
       sendTutorMsg(strTutor);
-      loadPanel();
+      loadPanel(1);
       exitDeletePanel();
     });
   }
@@ -1057,22 +1055,30 @@
     })
   }
 
-  function onlyLoadAdminEvents() {
-    adminEvents = [];
-    faunaGetEventsCurrentMonth(startISOstr, endISOstr)
-    .then(events => {
-      events.map(event => {
-        let newEvent = event.data;
-        newEvent.start = newEvent.start.value;
-        newEvent.end = newEvent.end.value;
-        bookedEventsData.map(bookedEvent => {
-          if (checkTimeOverlap(newEvent, bookedEvent)) {
-            newEvent.color = "#29b80d";
-          }
+  async function onlyLoadAdminEvents() {
+    return new Promise(resolve => {
+      adminEvents = [];
+      let overlappedEvents = [];
+      faunaGetEventsCurrentMonth(startISOstr, endISOstr)
+      .then(events => {
+        events.map(event => {
+          let newEvent = event.data;
+          newEvent.start = newEvent.start.value;
+          newEvent.end = newEvent.end.value;
+          bookedEventsData.map(bookedEvent => {
+            if (checkTimeOverlap(newEvent, bookedEvent)) {
+              overlappedEvents.push(newEvent);
+            }
+          })
+          adminEvents.push(newEvent);
         })
-        adminEvents.push(newEvent);
+        let emptySlots = adminEvents.filter(item => !overlappedEvents.includes(item));
+        // emptySlots.map(slot => {
+          // slot.color = "#29b80d";
+        // })
+        return resolve(emptySlots);
       })
-    })
+    });
   }
 
   function convertCourseJSONToCSV(arr) {
